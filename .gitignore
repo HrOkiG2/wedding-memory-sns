@@ -1,1 +1,4 @@
 docs/scratch/*
+
+# Node dependencies
+node_modules
