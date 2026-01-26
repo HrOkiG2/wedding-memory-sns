@@ -1,0 +1,23 @@
+{
+  "name": "wedding-memory-sns",
+  "version": "1.0.0",
+  "description": "結婚式当日にゲストが撮影した写真をリアルタイムで共有・スライドショー表示するためのWebアプリケーションです。 コスト効率とスケーラビリティに優れた AWS Serverless アーキテクチャを採用しています。",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "lint": "npm run lint --prefix app",
+    "lint:fix": "npm run lint:fix --prefix app"
+  },
+  "lint-staged": {
+    "app/**/*.{js,ts,vue}": [
+      "npm run lint --prefix app -- --fix"
+    ],
+    "aws/**/*.ts": [
+      "npm run lint --prefix aws -- --fix"
+    ]
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
+  }
+}
