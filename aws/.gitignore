@@ -9,3 +9,6 @@ cdk.out
 
 # system parameter
 .env
+
+# auth data
+scripts/auth/guests.json
