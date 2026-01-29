@@ -5,19 +5,33 @@
   "private": true,
   "scripts": {
     "prepare": "husky",
+    "dev": "npm run dev --prefix app",
+    "build": "npm run build --prefix app",
+    "generate": "npm run generate --prefix app",
     "lint": "npm run lint --prefix app",
-    "lint:fix": "npm run lint:fix --prefix app"
+    "lint:fix": "npm run lint:fix --prefix app",
+    "auth-url": "npx tsx scripts/generate-auth-url.ts",
+    "cdk": "npm run cdk --prefix aws --",
+    "cdk:synth": "npm run cdk --prefix aws -- synth",
+    "cdk:diff": "npm run cdk --prefix aws -- diff",
+    "cdk:deploy": "npm run cdk --prefix aws -- deploy --all",
+    "cdk:destroy": "npm run cdk --prefix aws -- destroy --all",
+    "db:seed:generate": "npm run seed:generate --prefix aws",
+    "db:seed:dry": "npm run seed:dry --prefix aws",
+    "db:seed": "npm run seed --prefix aws",
+    "db:seed:list": "npm run seed:list --prefix aws",
+    "front:deploy": "npm run deploy:frontend --prefix aws",
+    "front:deploy:dry": "npm run deploy:frontend:dry --prefix aws",
+    "front:deploy:skip-build": "npm run deploy:frontend:skip-build --prefix aws"
   },
   "lint-staged": {
     "app/**/*.{js,ts,vue}": [
       "npm run lint --prefix app -- --fix"
-    ],
-    "aws/**/*.ts": [
-      "npm run lint --prefix aws -- --fix"
     ]
   },
   "devDependencies": {
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7"
+    "lint-staged": "^16.2.7",
+    "tsx": "^4.19.0"
   }
 }

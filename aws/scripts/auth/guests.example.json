@@ -1,0 +1,32 @@
+[
+  {
+    "authToken": "admin-xxxx-yyyy-zzzz",
+    "tableId": "ADMIN",
+    "tableName": "新郎新婦"
+  },
+  {
+    "authToken": "table01-xxxx-yyyy-zzzz",
+    "tableId": "TABLE_01",
+    "tableName": "テーブル 1 (新郎側親族)"
+  },
+  {
+    "authToken": "table02-xxxx-yyyy-zzzz",
+    "tableId": "TABLE_02",
+    "tableName": "テーブル 2 (新婦側親族)"
+  },
+  {
+    "authToken": "table03-xxxx-yyyy-zzzz",
+    "tableId": "TABLE_03",
+    "tableName": "テーブル 3 (新郎友人)"
+  },
+  {
+    "authToken": "table04-xxxx-yyyy-zzzz",
+    "tableId": "TABLE_04",
+    "tableName": "テーブル 4 (新婦友人)"
+  },
+  {
+    "authToken": "table05-xxxx-yyyy-zzzz",
+    "tableId": "TABLE_05",
+    "tableName": "テーブル 5 (新郎会社)"
+  }
+]
