@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FooterNavigation from '~/components/FooterNavigation.vue';
 import type { Photo } from '~/types';
 
 definePageMeta({
@@ -65,6 +66,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <section>
   <div class="slideshow-page">
     <div v-if="isLoading" class="loading">
       <p>読み込み中...</p>
@@ -86,15 +88,17 @@ onUnmounted(() => {
         </div>
       </transition>
 
-      <div class="progress-dots">
+      <!-- <div class="progress-dots">
         <span
           v-for="(_, index) in photos"
           :key="index"
           :class="['dot', { active: index === currentIndex }]"
         />
-      </div>
+      </div> -->
     </div>
   </div>
+  <footer-navigation />
+  </section>
 </template>
 
 <style scoped>

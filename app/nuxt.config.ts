@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   // Modules
-  modules: ['@nuxt/eslint'],
+  modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss'],
 
   // SSG (Static Site Generation) for CloudFront hosting
   ssr: false,
@@ -12,8 +12,14 @@ export default defineNuxtConfig({
   // Runtime config (environment variables)
   runtimeConfig: {
     public: {
-      apiEndpoint: process.env.NUXT_PUBLIC_API_ENDPOINT || 'http://localhost:3001',
+      // ローカル開発時はNuxtのserver/apiを使用（空文字で相対パス）
+      // 本番ではCloudFront経由のAPIを使用
+      apiEndpoint: process.env.NUXT_PUBLIC_API_ENDPOINT || '/api',
       eventId: process.env.NUXT_PUBLIC_EVENT_ID || 'WEDDING_DEV',
+      // Wedding info
+      groomName: process.env.NUXT_PUBLIC_GROOM_NAME || 'Groom',
+      brideName: process.env.NUXT_PUBLIC_BRIDE_NAME || 'Bride',
+      weddingDate: process.env.NUXT_PUBLIC_WEDDING_DATE || '2026.01.01',
     }
   },
 
