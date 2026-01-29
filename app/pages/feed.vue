@@ -1,16 +1,24 @@
 <script setup lang="ts">
+import FooterNavigation from '~/components/FooterNavigation.vue';
+import Header from '~/components/Header.vue';
+import TakePicture from '~/components/TakePicture.vue';
+import SelectPicture from '~/components/SelectPicture.vue';
+import UploadPreviewModal from '~/components/UploadPreviewModal.vue';
 import type { Photo } from '~/types';
 
 definePageMeta({
   middleware: 'auth',
 });
 
-const { canDeletePhoto } = useAuth();
+const { authState, canDeletePhoto } = useAuth();
 const { fetchPhotos, deletePhoto, likePhoto } = useApi();
+const { previewUrl, isUploading, uploadProgress, uploadError, selectFile, upload, clear } =
+  useUpload();
 
 const photos = ref<Photo[]>([]);
 const isLoading = ref(true);
 const error = ref('');
+const selectPictureRef = ref<InstanceType<typeof SelectPicture> | null>(null);
 
 // Fetch photos on mount
 onMounted(async () => {
@@ -53,154 +61,150 @@ const handleLike = async (photo: Photo) => {
     console.error(e);
   }
 };
+
+// Upload handlers
+const handleFileSelect = (file: File) => {
+  selectFile(file);
+};
+
+const handleUpload = async () => {
+  const result = await upload();
+  if (result.success && result.photo) {
+    photos.value.unshift(result.photo);
+    setTimeout(() => clear(), 500);
+  }
+};
+
+// Get rotation class for photo cards (alternating slight rotation)
+const getRotation = (index: number): string => {
+  const rotations = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2'];
+  return rotations[index % rotations.length];
+};
+
+// Get table badge color
+const getTableColor = (tableId: string): string => {
+  if (tableId === authState.value.payload?.tableId) return 'bg-gray-200';
+  const colors = ['bg-oki-blue', 'bg-oki-yellow', 'bg-oki-pink', 'bg-green-300'];
+  const hash = tableId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+};
 </script>
 
 <template>
-  <div class="feed-page">
-    <header class="header">
-      <h1>Photos</h1>
-      <NuxtLink to="/upload" class="upload-btn">+</NuxtLink>
-    </header>
+  <div class="bg-oki-sand text-oki-text font-bold min-h-screen pb-24">
+    <Header />
 
-    <div v-if="isLoading" class="loading">
-      <p>読み込み中...</p>
-    </div>
+    <main class="px-4">
+      <!-- Upload Card -->
+      <div
+        class="bg-white border-4 border-black rounded-[32px] p-6 mb-8 shadow-pop-card relative overflow-hidden"
+      >
+        <div class="absolute -top-4 -right-4 text-6xl opacity-20 rotate-12">🌺</div>
 
-    <div v-else-if="error" class="error">
-      <p>{{ error }}</p>
-      <button @click="loadPhotos">再読み込み</button>
-    </div>
+        <h2 class="text-xl mb-4 text-center">写真をシェアしてね！</h2>
 
-    <div v-else-if="photos.length === 0" class="empty">
-      <p>まだ写真がありません</p>
-      <NuxtLink to="/upload" class="upload-link">最初の写真を投稿する</NuxtLink>
-    </div>
-
-    <div v-else class="photo-grid">
-      <div v-for="photo in photos" :key="photo.photoId" class="photo-card">
-        <img :src="photo.url" :alt="'Photo by ' + photo.tableId" loading="lazy" />
-        <div class="photo-actions">
-          <button class="like-btn" @click="handleLike(photo)">
-            ♥ {{ photo.likes }}
-          </button>
-          <button
-            v-if="canDeletePhoto(photo.tableId)"
-            class="delete-btn"
-            @click="handleDelete(photo)"
-          >
-            🗑️
-          </button>
-        </div>
-        <div class="photo-meta">
-          <span>{{ photo.tableId }}</span>
+        <div class="grid grid-cols-2 gap-3">
+          <TakePicture @select="handleFileSelect" />
+          <SelectPicture ref="selectPictureRef" @select="handleFileSelect" />
         </div>
       </div>
-    </div>
+
+      <!-- Section Title -->
+      <div class="mb-4 flex items-center gap-2">
+        <span class="text-xl">New Photos</span>
+        <div class="h-1 bg-black flex-grow rounded-full" />
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="isLoading" class="text-center py-8">
+        <p>読み込み中...</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="error" class="text-center py-8">
+        <p class="text-red-500">{{ error }}</p>
+        <button
+          class="mt-4 bg-oki-blue border-2 border-black rounded-full px-6 py-2 shadow-pop btn-press"
+          @click="loadPhotos"
+        >
+          再読み込み
+        </button>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else-if="photos?.length ?? 0 === 0" class="text-center py-8">
+        <p class="text-lg mb-4">まだ写真がありません</p>
+        <button
+          class="inline-block bg-oki-yellow border-2 border-black rounded-full px-6 py-2 shadow-pop btn-press"
+          @click="selectPictureRef?.open()"
+        >
+          最初の写真を投稿する
+        </button>
+      </div>
+
+      <!-- Photo Grid -->
+      <div v-else class="grid grid-cols-2 gap-4">
+        <div
+          v-for="(photo, index) in photos"
+          :key="photo.photoId"
+          class="bg-white border-2 border-black rounded-2xl p-2 shadow-pop"
+          :class="[getRotation(index), index % 3 === 1 ? 'mt-4' : '']"
+        >
+          <div
+            class="bg-gray-200 aspect-square rounded-xl mb-2 overflow-hidden border border-black relative"
+          >
+            <img
+              :src="photo.url"
+              :alt="'Photo by ' + photo.tableId"
+              class="w-full h-full object-cover"
+              loading="lazy"
+            />
+            <button
+              v-if="canDeletePhoto(photo.tableId)"
+              class="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 rounded-full border border-black flex items-center justify-center text-xs"
+              @click="handleDelete(photo)"
+            >
+              🗑️
+            </button>
+          </div>
+          <div class="flex justify-between items-center px-1">
+            <span
+              class="text-xs px-2 py-0.5 rounded-full border border-black"
+              :class="getTableColor(photo.tableId)"
+            >
+              {{ photo.tableId === authState.payload?.tableId ? 'Me' : photo.tableId }}
+            </span>
+            <button
+              class="hover:scale-110 transition"
+              :class="photo.likes > 0 ? 'text-red-500' : 'text-gray-400'"
+              @click="handleLike(photo)"
+            >
+              {{ photo.likes > 0 ? '❤️' : '♡' }} {{ photo.likes }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <FooterNavigation />
+
+    <!-- Upload Preview Modal -->
+    <UploadPreviewModal
+      v-if="previewUrl"
+      :preview-url="previewUrl"
+      :is-uploading="isUploading"
+      :upload-progress="uploadProgress"
+      :upload-error="uploadError"
+      @upload="handleUpload"
+      @cancel="clear"
+    />
   </div>
 </template>
 
 <style scoped>
-.feed-page {
-  min-height: 100vh;
-  background: #f5f5f5;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.header h1 {
-  font-size: 1.25rem;
-  margin: 0;
-}
-
-.upload-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #007bff;
-  color: white;
-  font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-}
-
-.loading,
-.error,
-.empty {
-  text-align: center;
-  padding: 2rem;
-}
-
-.error button,
-.upload-link {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-  padding: 1rem;
-}
-
-.photo-card {
-  background: white;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.photo-card img {
-  width: 100%;
-  height: 300px;
-  object-fit: cover;
-}
-
-.photo-actions {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem;
-}
-
-.like-btn,
-.delete-btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
-}
-
-.like-btn {
-  background: #ffe0e0;
-  color: #dc3545;
-}
-
-.delete-btn {
-  background: #f0f0f0;
-}
-
-.photo-meta {
-  padding: 0.5rem;
-  font-size: 0.875rem;
-  color: #666;
-  border-top: 1px solid #eee;
+.btn-press:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 1);
 }
 </style>

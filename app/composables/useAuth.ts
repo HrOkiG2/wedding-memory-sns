@@ -1,18 +1,21 @@
 import type { JwtPayload, AuthState, LoginResponse, ApiError } from '~/types';
 
-const AUTH_STORAGE_KEY = 'wedding_jwt';
+const AUTH_COOKIE_NAME = 'wedding_jwt';
 
 // Decode JWT payload (without verification - verification is done server-side)
 function decodeJwtPayload(token: string): JwtPayload | null {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
+    // Use Buffer for SSR compatibility
+    const jsonPayload = import.meta.server
+      ? Buffer.from(base64, 'base64').toString('utf-8')
+      : decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
     return JSON.parse(jsonPayload);
   } catch {
     return null;
@@ -26,28 +29,47 @@ function isTokenExpired(payload: JwtPayload): boolean {
 
 export function useAuth() {
   const config = useRuntimeConfig();
-  const authState = useState<AuthState>('auth', () => ({
-    isAuthenticated: false,
-    jwt: null,
-    payload: null,
-  }));
+  const jwtCookie = useCookie(AUTH_COOKIE_NAME, {
+    maxAge: 60 * 60 * 24, // 24 hours
+    sameSite: 'strict',
+  });
 
-  // Initialize auth state from localStorage
+  const authState = useState<AuthState>('auth', () => {
+    // Initialize from cookie (works on both server and client)
+    const storedJwt = jwtCookie.value;
+    if (storedJwt) {
+      const payload = decodeJwtPayload(storedJwt);
+      if (payload && !isTokenExpired(payload)) {
+        return {
+          isAuthenticated: true,
+          jwt: storedJwt,
+          payload,
+        };
+      }
+      // Clear expired token
+      jwtCookie.value = null;
+    }
+    return {
+      isAuthenticated: false,
+      jwt: null,
+      payload: null,
+    };
+  });
+
+  // Initialize auth state from cookie (for cases where state needs refresh)
   const initAuth = () => {
-    if (import.meta.client) {
-      const storedJwt = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (storedJwt) {
-        const payload = decodeJwtPayload(storedJwt);
-        if (payload && !isTokenExpired(payload)) {
-          authState.value = {
-            isAuthenticated: true,
-            jwt: storedJwt,
-            payload,
-          };
-        } else {
-          // Clear expired token
-          localStorage.removeItem(AUTH_STORAGE_KEY);
-        }
+    const storedJwt = jwtCookie.value;
+    if (storedJwt) {
+      const payload = decodeJwtPayload(storedJwt);
+      if (payload && !isTokenExpired(payload)) {
+        authState.value = {
+          isAuthenticated: true,
+          jwt: storedJwt,
+          payload,
+        };
+      } else {
+        // Clear expired token
+        jwtCookie.value = null;
       }
     }
   };
@@ -65,10 +87,8 @@ export function useAuth() {
         return { success: false, error: 'Invalid token received' };
       }
 
-      // Save to localStorage
-      if (import.meta.client) {
-        localStorage.setItem(AUTH_STORAGE_KEY, response.token);
-      }
+      // Save to cookie
+      jwtCookie.value = response.token;
 
       authState.value = {
         isAuthenticated: true,
@@ -94,9 +114,7 @@ export function useAuth() {
 
   // Logout
   const logout = () => {
-    if (import.meta.client) {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    }
+    jwtCookie.value = null;
     authState.value = {
       isAuthenticated: false,
       jwt: null,
