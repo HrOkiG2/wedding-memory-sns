@@ -132,7 +132,7 @@ const getTableColor = (tableId: string): string => {
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="photos?.length ?? 0 === 0" class="text-center py-8">
+      <div v-else-if="photos.length === 0" class="text-center py-8">
         <p class="text-lg mb-4">まだ写真がありません</p>
         <button
           class="inline-block bg-oki-yellow border-2 border-black rounded-full px-6 py-2 shadow-pop btn-press"
