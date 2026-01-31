@@ -5,6 +5,7 @@ import TakePicture from '~/components/TakePicture.vue';
 import SelectPicture from '~/components/SelectPicture.vue';
 import UploadPreviewModal from '~/components/UploadPreviewModal.vue';
 import type { Photo } from '~/types';
+import ImageDownloadBtn from '~/components/ImageDownloadBtn.vue';
 
 definePageMeta({
   middleware: 'auth',
@@ -174,9 +175,7 @@ const getTableColor = (tableId: string): string => {
             </span>
           </div>
           <div class="flex justify-between items-center px-1">
-            <button class="btn btn-sm btn-primary">
-              写真を保存
-            </button>
+            <ImageDownloadBtn :photo-url="photo.url as string" />
             <button
               class="hover:scale-110 transition"
               :class="photo.likes > 0 ? 'text-red-500' : 'text-gray-400'"
