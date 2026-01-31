@@ -8,6 +8,30 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import { Construct } from "constructs";
 
+// CloudFront Function: Rewrite URIs for S3 static hosting
+// /feed → /feed/index.html
+const URI_REWRITE_FUNCTION_CODE = `
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+
+  // If URI has a file extension, serve as-is
+  if (uri.includes('.')) {
+    return request;
+  }
+
+  // If URI ends with /, append index.html
+  if (uri.endsWith('/')) {
+    request.uri = uri + 'index.html';
+  } else {
+    // Append /index.html for directory-style paths
+    request.uri = uri + '/index.html';
+  }
+
+  return request;
+}
+`;
+
 interface CdnStackProps extends cdk.StackProps {
   httpApi: apigatewayv2.IHttpApi;
   // カスタムドメイン（オプション）
@@ -38,12 +62,28 @@ export class CdnStack extends cdk.Stack {
     const s3Origin =
       cloudfrontOrigins.S3BucketOrigin.withOriginAccessControl(this.webBucket);
 
+    // CloudFront Function for URI rewriting (SPA routing)
+    const uriRewriteFunction = new cloudfront.Function(
+      this,
+      "UriRewriteFunction",
+      {
+        code: cloudfront.FunctionCode.fromInline(URI_REWRITE_FUNCTION_CODE),
+        runtime: cloudfront.FunctionRuntime.JS_2_0,
+      },
+    );
+
     // CloudFront Distribution
     this.distribution = new cloudfront.Distribution(this, "WebDistribution", {
       defaultBehavior: {
         origin: s3Origin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        functionAssociations: [
+          {
+            function: uriRewriteFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          },
+        ],
       },
       additionalBehaviors: {
         "/api/*": {

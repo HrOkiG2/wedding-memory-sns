@@ -58,7 +58,21 @@ export function useAuth() {
 
   // Initialize auth state from cookie (for cases where state needs refresh)
   const initAuth = () => {
-    const storedJwt = jwtCookie.value;
+    let storedJwt = jwtCookie.value;
+
+    // Fallback: read directly from document.cookie if useCookie returns null
+    if (!storedJwt && import.meta.client) {
+      const cookies = document.cookie.split(';');
+      for (const cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === AUTH_COOKIE_NAME && value) {
+          storedJwt = decodeURIComponent(value);
+          jwtCookie.value = storedJwt; // Sync back to useCookie
+          break;
+        }
+      }
+    }
+
     if (storedJwt) {
       const payload = decodeJwtPayload(storedJwt);
       if (payload && !isTokenExpired(payload)) {
@@ -70,6 +84,11 @@ export function useAuth() {
       } else {
         // Clear expired token
         jwtCookie.value = null;
+        authState.value = {
+          isAuthenticated: false,
+          jwt: null,
+          payload: null,
+        };
       }
     }
   };
