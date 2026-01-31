@@ -166,14 +166,17 @@ const getTableColor = (tableId: string): string => {
             >
               🗑️
             </button>
-          </div>
-          <div class="flex justify-between items-center px-1">
             <span
-              class="text-xs px-2 py-0.5 rounded-full border border-black"
+              class="absolute top-1 left-1 text-xs px-2 py-0.5 rounded-full border border-black bg-gray-200"
               :class="getTableColor(photo.tableId)"
             >
               {{ photo.tableId === authState.payload?.tableId ? 'Me' : photo.tableId }}
             </span>
+          </div>
+          <div class="flex justify-between items-center px-1">
+            <button class="btn btn-sm btn-primary">
+              写真を保存
+            </button>
             <button
               class="hover:scale-110 transition"
               :class="photo.likes > 0 ? 'text-red-500' : 'text-gray-400'"
