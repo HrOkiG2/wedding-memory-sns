@@ -11,6 +11,7 @@ const previewUrl = ref<string | null>(null);
 const isUploading = ref(false);
 const uploadProgress = ref(0);
 const error = ref('');
+const showSuccess = ref<boolean>(false)
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic'];
@@ -69,10 +70,13 @@ const handleUpload = async () => {
 
     uploadProgress.value = 100;
 
+    showSuccess.value = true
+
     // Success - redirect to feed
     setTimeout(() => {
+      showSuccess.value = false
       router.push('/feed');
-    }, 500);
+    }, 3000);
   } catch (e) {
     error.value = 'アップロードに失敗しました。もう一度お試しください。';
     console.error(e);
@@ -128,6 +132,10 @@ const clearSelection = () => {
         <p>{{ error }}</p>
       </div>
     </div>
+    <UploadSuccess 
+      :visible="showSuccess"
+      @close="showSuccess = false"
+    />
   </div>
 </template>
 
