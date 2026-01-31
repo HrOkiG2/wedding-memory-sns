@@ -72,7 +72,9 @@ const HEADERS = {
 export const handler = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
-  const { routeKey } = event.requestContext;
+  // Remove /api prefix from routeKey if present (e.g., "POST /api/photos" -> "POST /photos")
+  const rawRouteKey = event.requestContext.routeKey;
+  const routeKey = rawRouteKey.replace(" /api/", " /");
   const token = getAuthToken(event);
 
   if (!token) {
@@ -213,26 +215,35 @@ export const handler = async (
       const photoId = randomUUID();
       const createdAt = new Date().toISOString();
 
+      const photoItem = {
+        eventId: EVENT_ID,
+        createdAt,
+        photoId,
+        tableId: user.tableId,
+        s3Key,
+        mimeType,
+        isVisible: true,
+        likes: 0,
+      };
+
       await docClient.send(
         new PutCommand({
           TableName: PHOTOS_TABLE,
-          Item: {
-            eventId: EVENT_ID,
-            createdAt,
-            photoId,
-            tableId: user.tableId,
-            s3Key,
-            mimeType,
-            isVisible: true,
-            likes: 0,
-          },
+          Item: photoItem,
         }),
+      );
+
+      // Generate signed URL for the uploaded photo
+      const url = await getSignedUrl(
+        s3Client,
+        new GetObjectCommand({ Bucket: PHOTO_BUCKET, Key: s3Key }),
+        { expiresIn: 3600 },
       );
 
       return {
         statusCode: 201,
         headers: HEADERS,
-        body: JSON.stringify({ photoId, createdAt }),
+        body: JSON.stringify({ ...photoItem, url }),
       };
     }
 
