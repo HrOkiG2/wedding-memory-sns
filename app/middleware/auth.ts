@@ -1,10 +1,9 @@
 export default defineNuxtRouteMiddleware((to) => {
   const { authState, initAuth } = useAuth();
 
-  // Initialize auth on first load
-  if (!authState.value.isAuthenticated) {
-    initAuth();
-  }
+  // Always initialize auth from cookie on every navigation
+  // This ensures cookie is read fresh after page reload
+  initAuth();
 
   // Public routes that don't require auth
   const publicRoutes = ['/', '/login'];
