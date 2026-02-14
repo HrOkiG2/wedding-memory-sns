@@ -165,14 +165,12 @@ export const handler = async (
     }
 
     // POST /photos/upload-url - Get presigned URL for upload
+    // クライアント側でJPEGに変換済みのため、JPEGのみ受け付ける
     if (routeKey === "POST /photos/upload-url") {
       const body = JSON.parse(event.body || "{}");
       const { mimeType } = body;
 
-      if (
-        !mimeType ||
-        !["image/jpeg", "image/png", "image/heic"].includes(mimeType)
-      ) {
+      if (mimeType !== "image/jpeg") {
         return {
           statusCode: 400,
           headers: HEADERS,
@@ -182,13 +180,7 @@ export const handler = async (
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const uuid = randomUUID().slice(0, 8);
-      const ext =
-        mimeType === "image/jpeg"
-          ? "jpg"
-          : mimeType === "image/png"
-            ? "png"
-            : "heic";
-      const s3Key = `photos/${user.tableId}/${timestamp}_${uuid}.${ext}`;
+      const s3Key = `photos/${user.tableId}/${timestamp}_${uuid}.jpg`;
 
       const uploadUrl = await getSignedUrl(
         s3Client,

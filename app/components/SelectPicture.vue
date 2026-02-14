@@ -29,7 +29,7 @@ defineExpose({ open });
     <input
       ref="inputRef"
       type="file"
-      accept="image/jpeg,image/png,image/heic"
+      accept="image/jpeg, image/jpg, image/png, image/heic, image/heif, image/webp"
       hidden
       @change="handleChange"
     />
