@@ -5,18 +5,29 @@ definePageMeta({
 
 const router = useRouter();
 const { getUploadUrl, uploadToS3, registerPhoto } = useApi();
+const { isConverting, convertProgress, convertToJpeg, createPreviewUrl } = useImageConverter();
 
 const selectedFile = ref<File | null>(null);
+const convertedBlob = ref<Blob | null>(null);
 const previewUrl = ref<string | null>(null);
 const isUploading = ref(false);
 const uploadProgress = ref(0);
 const error = ref('');
-const showSuccess = ref<boolean>(false)
+const showSuccess = ref<boolean>(false);
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic'];
+// 変換前の最大サイズ（変換後は小さくなるので緩和）
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+// 変換するのでより多くの形式を受け入れ
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/heic',
+  'image/heif',
+  'image/webp'
+];
 
-const handleFileSelect = (event: Event) => {
+const handleFileSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
 
@@ -24,57 +35,64 @@ const handleFileSelect = (event: Event) => {
 
   // Validate file type
   if (!ALLOWED_TYPES.includes(file.type)) {
-    error.value = 'JPEG、PNG、HEIC形式の画像を選択してください';
+    error.value = 'JPEG、PNG、HEIC、WebP形式の画像を選択してください';
     return;
   }
 
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
-    error.value = 'ファイルサイズは5MB以下にしてください';
+    error.value = 'ファイルサイズは20MB以下にしてください';
     return;
   }
 
   error.value = '';
   selectedFile.value = file;
 
-  // Create preview
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    previewUrl.value = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
+  try {
+    // 画像を変換（JPEG化 + リサイズ）
+    const result = await convertToJpeg(file);
+    convertedBlob.value = result.blob;
+
+    // 変換後の画像でプレビュー生成
+    previewUrl.value = await createPreviewUrl(result.blob);
+  } catch (e) {
+    console.error('Image conversion failed:', e);
+    error.value = '画像の変換に失敗しました。別の画像をお試しください。';
+    clearSelection();
+  }
 };
 
 const handleUpload = async () => {
-  if (!selectedFile.value) return;
+  if (!convertedBlob.value) return;
 
   isUploading.value = true;
   uploadProgress.value = 0;
   error.value = '';
 
   try {
+    // 変換済みのJPEGをアップロード
+    const mimeType = 'image/jpeg';
+    const fileName = selectedFile.value?.name.replace(/\.[^.]+$/, '.jpg') || 'photo.jpg';
+
     // 1. Get presigned URL
     uploadProgress.value = 20;
-    const { uploadUrl, s3Key } = await getUploadUrl(
-      selectedFile.value.type,
-      selectedFile.value.name
-    );
+    const { uploadUrl, s3Key } = await getUploadUrl(mimeType, fileName);
 
     // 2. Upload to S3
     uploadProgress.value = 50;
-    await uploadToS3(uploadUrl, selectedFile.value, selectedFile.value.type);
+    await uploadToS3(uploadUrl, convertedBlob.value, mimeType);
 
     // 3. Register photo metadata
     uploadProgress.value = 80;
-    await registerPhoto(s3Key, selectedFile.value.type);
+    await registerPhoto(s3Key, mimeType);
 
     uploadProgress.value = 100;
 
-    showSuccess.value = true
+    showSuccess.value = true;
 
     // Success - redirect to feed
     setTimeout(() => {
-      showSuccess.value = false
+      showSuccess.value = false;
       router.push('/feed');
     }, 3000);
   } catch (e) {
@@ -87,6 +105,7 @@ const handleUpload = async () => {
 
 const clearSelection = () => {
   selectedFile.value = null;
+  convertedBlob.value = null;
   previewUrl.value = null;
   error.value = '';
 };
@@ -101,17 +120,28 @@ const clearSelection = () => {
     </header>
 
     <div class="upload-container">
-      <div v-if="!previewUrl" class="file-select">
+      <!-- 変換中の表示 -->
+      <div v-if="isConverting" class="file-select">
+        <div class="converting">
+          <div class="spinner" />
+          <p>画像を変換中...</p>
+          <div class="progress">
+            <div class="progress-bar" :style="{ width: convertProgress + '%' }"/>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="!previewUrl" class="file-select">
         <label class="select-btn">
           <input
             type="file"
-            accept="image/jpeg,image/png,image/heic"
+            accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
             hidden
             @change="handleFileSelect"
           />
           <span>写真を選択</span>
         </label>
-        <p class="hint">JPEG, PNG, HEIC (最大5MB)</p>
+        <p class="hint">JPEG, PNG, HEIC, WebP (最大20MB)</p>
       </div>
 
       <div v-else class="preview">
@@ -259,5 +289,47 @@ const clearSelection = () => {
   color: #dc3545;
   border-radius: 0.5rem;
   text-align: center;
+}
+
+.converting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.converting p {
+  font-size: 1rem;
+  color: #666;
+}
+
+.converting .progress {
+  width: 100%;
+  max-width: 200px;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.converting .progress-bar {
+  height: 100%;
+  background: #007bff;
+  transition: width 0.3s ease;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top-color: #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
