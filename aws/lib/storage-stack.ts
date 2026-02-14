@@ -3,12 +3,18 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
+interface StorageStackProps extends cdk.StackProps {
+  domainName?: string;
+}
+
 export class StorageStack extends cdk.Stack {
   public readonly photoBucket: s3.Bucket;
   public readonly jwtSecret: secretsmanager.Secret;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: StorageStackProps) {
     super(scope, id, props);
+
+    const { domainName } = props ?? {};
 
     // JWT Secret
     this.jwtSecret = new secretsmanager.Secret(this, 'JwtSecret', {
@@ -28,7 +34,7 @@ export class StorageStack extends cdk.Stack {
       cors: [
         {
           allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT],
-          allowedOrigins: ['*'],
+          allowedOrigins: domainName ? [`https://${domainName}`] : ['*'],
           allowedHeaders: ['*'],
           maxAge: 3000,
         },

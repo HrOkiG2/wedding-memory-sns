@@ -26,7 +26,7 @@ const hostedZoneId = process.env.HOSTED_ZONE_ID; // Route53ホストゾーンID
 const databaseStack = new DatabaseStack(app, 'WeddingDatabaseStack', { env });
 
 // Storage Stack
-const storageStack = new StorageStack(app, 'WeddingStorageStack', { env });
+const storageStack = new StorageStack(app, 'WeddingStorageStack', { env, domainName });
 
 // API Stack
 const apiStack = new ApiStack(app, 'WeddingApiStack', {
