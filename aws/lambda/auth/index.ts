@@ -31,15 +31,16 @@ async function getJwtSecret(): Promise<string> {
   return cachedJwtSecret!;
 }
 
-async function checkRateLimit(clientIp: string): Promise<boolean> {
-  const WINDOW_SECONDS = 900;
-  const MAX_ATTEMPTS = 10;
+async function checkRateLimit(clientIp: string, token: string): Promise<boolean> {
+  const WINDOW_SECONDS = 180;
+  const MAX_ATTEMPTS = 30;
   const now = Math.floor(Date.now() / 1000);
+  const pk = `ip#${clientIp}#token#${token}`;
 
   const result = await docClient.send(
     new GetCommand({
       TableName: RATE_LIMIT_TABLE,
-      Key: { pk: `ip#${clientIp}` },
+      Key: { pk },
     }),
   );
 
@@ -50,7 +51,7 @@ async function checkRateLimit(clientIp: string): Promise<boolean> {
   await docClient.send(
     new UpdateCommand({
       TableName: RATE_LIMIT_TABLE,
-      Key: { pk: `ip#${clientIp}` },
+      Key: { pk },
       UpdateExpression:
         "SET attempts = if_not_exists(attempts, :zero) + :inc, expiresAt = :ttl",
       ExpressionAttributeValues: {
@@ -69,19 +70,6 @@ export const handler = async (
 ): Promise<APIGatewayProxyResultV2> => {
   const clientIp = event.requestContext.http.sourceIp;
 
-  // Rate limit check
-  const allowed = await checkRateLimit(clientIp);
-  if (!allowed) {
-    return {
-      statusCode: 429,
-      body: JSON.stringify({
-        error: "TOO_MANY_REQUESTS",
-        message: "しばらく時間をおいてから再度お試しください",
-        retryAfter: 900,
-      }),
-    };
-  }
-
   try {
     const body = JSON.parse(event.body || "{}");
     const { token } = body;
@@ -95,6 +83,19 @@ export const handler = async (
         body: JSON.stringify({
           error: "MISSING_TOKEN",
           message: "トークンが必要です",
+        }),
+      };
+    }
+
+    // Rate limit check (per IP + token combination)
+    const allowed = await checkRateLimit(clientIp, token);
+    if (!allowed) {
+      return {
+        statusCode: 429,
+        body: JSON.stringify({
+          error: "TOO_MANY_REQUESTS",
+          message: "リクエストが多すぎます。3分後に再度お試しください",
+          retryAfter: 180,
         }),
       };
     }
