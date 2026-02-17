@@ -12,19 +12,23 @@ onMounted(async () => {
   // Check for token in URL (QR code scan)
   const token = route.query.token as string | undefined;
   if (token) {
-    isLoading.value = true;
-    errorMessage.value = '';
-
-    const result = await login(token);
-    isLoading.value = false;
-
-    if (result.success) {
-      // Remove token from URL and redirect to feed
+    if (authState.value.isAuthenticated && authState.value.payload?.sub === token) {
       router.replace('/feed');
     } else {
-      errorMessage.value = result.error || 'ログインに失敗しました';
-      // Remove token from URL
-      router.replace('/');
+      isLoading.value = true;
+      errorMessage.value = '';
+
+      const result = await login(token);
+      isLoading.value = false;
+
+      if (result.success) {
+        // Remove token from URL and redirect to feed
+        router.replace('/feed');
+      } else {
+        errorMessage.value = result.error || 'ログインに失敗しました';
+        // Remove token from URL
+        router.replace('/');
+      }
     }
   } else if (authState.value.isAuthenticated) {
     // Already logged in, redirect to feed
