@@ -18,6 +18,7 @@ const { previewUrl, isUploading, uploadProgress, uploadError, selectFile, upload
 const photos = ref<Photo[]>([]);
 const isLoading = ref(true);
 const error = ref('');
+const showSuccess = ref(false);
 const selectPictureRef = ref<InstanceType<typeof SelectPicture> | null>(null);
 
 // Fetch photos on mount
@@ -71,7 +72,11 @@ const handleUpload = async () => {
   const result = await upload();
   if (result.success && result.photo) {
     photos.value.unshift(result.photo);
-    setTimeout(() => clear(), 500);
+    showSuccess.value = true;
+    setTimeout(() => {
+      showSuccess.value = false;
+      clear();
+    }, 3000);
   }
 };
 
@@ -198,6 +203,12 @@ const getTableColor = (tableId: string): string => {
       :upload-error="uploadError"
       @upload="handleUpload"
       @cancel="clear"
+    />
+
+    <!-- Upload Success Message -->
+    <UploadSuccess
+      :visible="showSuccess"
+      @close="showSuccess = false"
     />
   </div>
 </template>
