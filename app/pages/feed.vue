@@ -5,7 +5,6 @@ import TakePicture from '~/components/TakePicture.vue';
 import SelectPicture from '~/components/SelectPicture.vue';
 import UploadPreviewModal from '~/components/UploadPreviewModal.vue';
 import type { Photo } from '~/types';
-import ImageDownloadBtn from '~/components/ImageDownloadBtn.vue';
 
 definePageMeta({
   middleware: 'auth',
@@ -171,11 +170,10 @@ const getTableColor = (tableId: string): string => {
               class="absolute top-1 left-1 text-xs px-2 py-0.5 rounded-full border border-black bg-gray-200"
               :class="getTableColor(photo.tableId)"
             >
-              {{ photo.tableId === authState.payload?.tableId ? 'Me' : photo.tableId }}
+              {{ photo.tableId === authState.payload?.tableId ? 'Me' : '' }}
             </span>
           </div>
-          <div class="flex justify-between items-center px-1">
-            <ImageDownloadBtn :photo-url="photo.url as string" />
+          <div class="flex justify-end items-center px-1">
             <button
               class="hover:scale-110 transition"
               :class="photo.likes > 0 ? 'text-red-500' : 'text-gray-400'"
