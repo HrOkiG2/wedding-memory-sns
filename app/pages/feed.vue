@@ -51,14 +51,19 @@ const handleDelete = async (photo: Photo) => {
   }
 };
 
+const likingPhotos = ref<Set<string>>(new Set());
+
 const handleLike = async (photo: Photo) => {
+  // Optimistic UI update
+  photo.likes++;
+  likingPhotos.value.add(photo.photoId);
+  setTimeout(() => likingPhotos.value.delete(photo.photoId), 600);
+
   try {
     await likePhoto(photo.photoId, photo.createdAt);
-    const target = photos.value.find((p) => p.photoId === photo.photoId);
-    if (target) {
-      target.likes++;
-    }
   } catch (e) {
+    // Rollback on failure
+    photo.likes--;
     console.error(e);
   }
 };
@@ -180,8 +185,11 @@ const getTableColor = (tableId: string): string => {
           </div>
           <div class="flex justify-end items-center px-1">
             <button
-              class="hover:scale-110 transition"
-              :class="photo.likes > 0 ? 'text-red-500' : 'text-gray-400'"
+              class="transition-transform duration-200 active:scale-125"
+              :class="[
+                photo.likes > 0 ? 'text-red-500' : 'text-gray-400',
+                likingPhotos.has(photo.photoId) ? 'like-pop' : '',
+              ]"
               @click="handleLike(photo)"
             >
               {{ photo.likes > 0 ? '❤️' : '♡' }} {{ photo.likes }}
@@ -217,5 +225,16 @@ const getTableColor = (tableId: string): string => {
 .btn-press:active {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+}
+
+@keyframes like-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.4); }
+  60% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+.like-pop {
+  animation: like-pop 0.5s ease-out;
 }
 </style>
