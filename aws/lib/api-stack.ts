@@ -14,6 +14,7 @@ interface ApiStackProps extends cdk.StackProps {
   guestAuthTable: dynamodb.ITable;
   photosTable: dynamodb.ITable;
   rateLimitTable: dynamodb.ITable;
+  pendingUploadsTable: dynamodb.ITable;
   photoBucket: s3.IBucket;
   jwtSecret: secretsmanager.ISecret;
   domainName: string
@@ -25,7 +26,7 @@ export class ApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
-    const { guestAuthTable, photosTable, rateLimitTable, photoBucket, jwtSecret, domainName } = props;
+    const { guestAuthTable, photosTable, rateLimitTable, pendingUploadsTable, photoBucket, jwtSecret, domainName } = props;
 
     // Log Groups
     const authLogGroup = new logs.LogGroup(this, 'AuthFunctionLogGroup', {
@@ -54,6 +55,7 @@ export class ApiStack extends cdk.Stack {
         GUEST_AUTH_TABLE: guestAuthTable.tableName,
         PHOTOS_TABLE: photosTable.tableName,
         RATE_LIMIT_TABLE: rateLimitTable.tableName,
+        PENDING_UPLOADS_TABLE: pendingUploadsTable.tableName,
         PHOTO_BUCKET: photoBucket.bucketName,
         JWT_SECRET_ARN: jwtSecret.secretArn,
       },
@@ -83,7 +85,10 @@ export class ApiStack extends cdk.Stack {
     jwtSecret.grantRead(authFunction);
 
     photosTable.grantReadWriteData(photosFunction);
-    photoBucket.grantReadWrite(photosFunction);
+    pendingUploadsTable.grantReadWriteData(photosFunction);
+    // 写真の閲覧はCloudFront(OAC)経由でS3から直接配信するため、
+    // Lambdaは署名付きPUT URLの発行(アップロード)権限のみで足りる。
+    photoBucket.grantWrite(photosFunction);
     jwtSecret.grantRead(photosFunction);
 
     // HTTP API
