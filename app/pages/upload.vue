@@ -172,7 +172,7 @@ const clearSelection = () => {
 <style scoped>
 .upload-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--c-bg);
 }
 
 .header {
@@ -180,12 +180,14 @@ const clearSelection = () => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--c-surface);
+  border-bottom: var(--c-border-w) solid var(--c-border);
 }
 
 .header h1 {
+  font-family: var(--font-heading);
   font-size: 1.25rem;
+  color: var(--c-ink);
   margin: 0;
 }
 
@@ -197,7 +199,7 @@ const clearSelection = () => {
   justify-content: center;
   font-size: 1.5rem;
   text-decoration: none;
-  color: #333;
+  color: var(--c-ink);
 }
 
 .upload-container {
@@ -207,9 +209,9 @@ const clearSelection = () => {
 }
 
 .file-select {
-  background: white;
-  border: 2px dashed #ccc;
-  border-radius: 1rem;
+  background: var(--c-surface);
+  border: 2px dashed var(--c-border);
+  border-radius: var(--radius-card);
   padding: 3rem;
   text-align: center;
 }
@@ -217,8 +219,9 @@ const clearSelection = () => {
 .select-btn {
   display: inline-block;
   padding: 1rem 2rem;
-  background: #007bff;
-  color: white;
+  background: var(--c-primary);
+  color: var(--c-ink);
+  border: var(--c-border-w) solid var(--c-border);
   border-radius: 0.5rem;
   cursor: pointer;
   font-size: 1rem;
@@ -227,14 +230,16 @@ const clearSelection = () => {
 .hint {
   margin-top: 1rem;
   font-size: 0.875rem;
-  color: #888;
+  color: var(--c-ink);
+  opacity: 0.6;
 }
 
 .preview {
-  background: white;
-  border-radius: 1rem;
+  background: var(--c-surface);
+  border: var(--c-border-w) solid var(--c-border);
+  border-radius: var(--radius-card);
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-pop-card);
 }
 
 .preview img {
@@ -251,7 +256,7 @@ const clearSelection = () => {
 
 .progress-bar {
   height: 8px;
-  background: #007bff;
+  background: var(--c-primary);
   border-radius: 4px;
   transition: width 0.3s ease;
 }
@@ -266,20 +271,20 @@ const clearSelection = () => {
 .upload-btn {
   flex: 1;
   padding: 1rem;
-  border: none;
+  border: var(--c-border-w) solid var(--c-border);
   border-radius: 0.5rem;
   font-size: 1rem;
   cursor: pointer;
 }
 
 .cancel-btn {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--c-bg);
+  color: var(--c-ink);
 }
 
 .upload-btn {
-  background: #007bff;
-  color: white;
+  background: var(--c-primary);
+  color: var(--c-ink);
 }
 
 .error {
@@ -300,29 +305,30 @@ const clearSelection = () => {
 
 .converting p {
   font-size: 1rem;
-  color: #666;
+  color: var(--c-ink);
+  opacity: 0.7;
 }
 
 .converting .progress {
   width: 100%;
   max-width: 200px;
   height: 8px;
-  background: #e0e0e0;
+  background: var(--c-bg);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .converting .progress-bar {
   height: 100%;
-  background: #007bff;
+  background: var(--c-primary);
   transition: width 0.3s ease;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #e0e0e0;
-  border-top-color: #007bff;
+  border: 4px solid var(--c-bg);
+  border-top-color: var(--c-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

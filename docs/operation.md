@@ -98,3 +98,7 @@ cdk destroy
 | **S3_BUCKET_NAME** | 画像保存バケット名 | `wedding-photos-202X` |
 | **API_ENDPOINT** | Lambda APIのエンドポイント | `https://xxx.execute-api...` |
 | **EVENT_ID** | イベント識別子 | `WEDDING_2024_TARO_HANAKO` |
+| **NUXT_PUBLIC_GROOM_NAME** | 新郎の名前（フロントエンド表示用） | `TARO` |
+| **NUXT_PUBLIC_BRIDE_NAME** | 新婦の名前（フロントエンド表示用） | `HANA` |
+| **NUXT_PUBLIC_WEDDING_DATE** | 結婚式の日付（フロントエンド表示用） | `2026-01-01` |
+| **NUXT_PUBLIC_UI_THEME** | フロントエンドのUIデザインテーマ。`pop`（ポップ・現行デザイン）または `botanical`（ナチュラル・ボタニカル）を指定。`app/.env` に設定し `npm run generate` でビルドすると反映される（静的ビルドのためテーマ変更には再ビルド・再デプロイが必要） | `pop` |

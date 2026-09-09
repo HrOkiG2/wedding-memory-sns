@@ -16,7 +16,7 @@ const emit = defineEmits<{
   <Teleport to="body">
     <div class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
       <div
-        class="bg-white border-4 border-black rounded-3xl max-w-md w-full overflow-hidden shadow-pop-card"
+        class="bg-oki-surface border-theme-lg border-oki-border rounded-3xl max-w-md w-full overflow-hidden shadow-pop-card"
       >
         <!-- Preview Image -->
         <div class="aspect-square bg-black">
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 
         <!-- Progress Bar -->
         <div v-if="isUploading" class="p-4">
-          <div class="bg-gray-200 rounded-full h-3 border border-black overflow-hidden">
+          <div class="bg-gray-200 rounded-full h-3 border border-oki-border overflow-hidden">
             <div
               class="bg-oki-blue h-full transition-all duration-300"
               :style="{ width: uploadProgress + '%' }"
@@ -42,13 +42,13 @@ const emit = defineEmits<{
         <!-- Actions -->
         <div v-if="!isUploading" class="grid grid-cols-2 gap-3 p-4">
           <button
-            class="btn-press bg-gray-200 border-2 border-black rounded-2xl py-3 shadow-pop font-bold"
+            class="btn-press bg-gray-200 border-theme border-oki-border rounded-2xl py-3 shadow-pop font-bold"
             @click="emit('cancel')"
           >
             キャンセル
           </button>
           <button
-            class="btn-press bg-oki-blue border-2 border-black rounded-2xl py-3 shadow-pop font-bold"
+            class="btn-press bg-oki-blue border-theme border-oki-border rounded-2xl py-3 shadow-pop font-bold"
             @click="emit('upload')"
           >
             投稿する
