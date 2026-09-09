@@ -20,8 +20,15 @@ export function useApi() {
   };
 
   // Fetch photos for slideshow (5min delay)
-  const fetchSlideshowPhotos = async (): Promise<PhotosResponse> => {
-    return await $fetch<PhotosResponse>(`${apiBase}/photos/slideshow`, {
+  // sinceを渡すと、それ以降に追加された写真だけを返す（ポーリングの差分取得用）
+  const fetchSlideshowPhotos = async (since?: string): Promise<PhotosResponse> => {
+    const params = new URLSearchParams();
+    if (since) {
+      params.set('since', since);
+    }
+    const url = `${apiBase}/photos/slideshow${params.toString() ? `?${params}` : ''}`;
+
+    return await $fetch<PhotosResponse>(url, {
       headers: getAuthHeader(),
     });
   };
@@ -39,12 +46,15 @@ export function useApi() {
   };
 
   // Upload photo to S3
+  // Cache-Controlはサーバー側(upload-url発行時)の署名対象に含まれているため、
+  // ここで送る値を変える場合はaws/lambda/photos/index.tsのPHOTO_CACHE_CONTROLも合わせて変更すること
   const uploadToS3 = async (uploadUrl: string, file: Blob, mimeType: string): Promise<void> => {
     await $fetch(uploadUrl, {
       method: 'PUT',
       body: file,
       headers: {
         'Content-Type': mimeType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
   };

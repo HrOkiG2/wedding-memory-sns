@@ -34,6 +34,7 @@ const apiStack = new ApiStack(app, 'WeddingApiStack', {
   guestAuthTable: databaseStack.guestAuthTable,
   photosTable: databaseStack.photosTable,
   rateLimitTable: databaseStack.rateLimitTable,
+  pendingUploadsTable: databaseStack.pendingUploadsTable,
   photoBucket: storageStack.photoBucket,
   jwtSecret: storageStack.jwtSecret,
   domainName: domainName ?? ''
@@ -58,12 +59,14 @@ const cdnStack = new CdnStack(app, 'WeddingCdnStack', {
   env,
   crossRegionReferences: true,
   httpApi: apiStack.httpApi,
+  photoBucket: storageStack.photoBucket,
   // カスタムドメイン（設定がある場合のみ）
   domainName,
   certificate: dnsStack?.certificate,
   hostedZone: dnsStack?.hostedZone,
 });
 cdnStack.addDependency(apiStack);
+cdnStack.addDependency(storageStack);
 if (dnsStack) {
   cdnStack.addDependency(dnsStack);
 }
