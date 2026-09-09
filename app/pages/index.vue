@@ -40,7 +40,7 @@ onMounted(async () => {
 <template>
   <div class="login-page">
     <div class="container">
-      <h1>Wedding Photo Share</h1>
+      <h1 class="app-title">Wedding Photo Share</h1>
 
       <div v-if="isLoading" class="loading">
         <p>ログイン中...</p>
@@ -66,26 +66,29 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: var(--c-bg);
 }
 
 .container {
   text-align: center;
   max-width: 400px;
   padding: 2rem;
-  background: white;
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--c-surface);
+  border: var(--c-border-w) solid var(--c-border);
+  border-radius: var(--radius-card-lg);
+  box-shadow: var(--shadow-pop-card);
 }
 
-h1 {
+.app-title {
+  font-family: var(--font-heading);
   font-size: 1.5rem;
-  color: #333;
+  color: var(--c-ink);
   margin-bottom: 1.5rem;
 }
 
 .loading {
-  color: #666;
+  color: var(--c-ink);
+  opacity: 0.7;
 }
 
 .error {
@@ -93,12 +96,13 @@ h1 {
 }
 
 .welcome {
-  color: #333;
+  color: var(--c-ink);
 }
 
 .hint {
   font-size: 0.875rem;
-  color: #888;
+  color: var(--c-ink);
+  opacity: 0.6;
   margin-top: 0.5rem;
 }
 </style>

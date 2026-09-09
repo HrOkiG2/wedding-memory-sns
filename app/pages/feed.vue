@@ -14,6 +14,10 @@ const { authState, canDeletePhoto } = useAuth();
 const { fetchPhotos, deletePhoto, likePhoto } = useApi();
 const { previewUrl, isUploading, uploadProgress, uploadError, selectFile, upload, clear } =
   useUpload();
+const { theme } = useTheme();
+
+// テーマごとの飾り絵文字（南国の花🌺 / 葉っぱ🌿）
+const decorEmoji = computed(() => (theme.value === 'botanical' ? '🌿' : '🌺'));
 
 const photos = ref<Photo[]>([]);
 const isLoading = ref(true);
@@ -93,8 +97,8 @@ const getRotation = (index: number): string => {
 
 // Get table badge color
 const getTableColor = (tableId: string): string => {
-  if (tableId === authState.value.payload?.tableId) return 'bg-gray-200';
-  const colors = ['bg-oki-blue', 'bg-oki-yellow', 'bg-oki-pink', 'bg-green-300'];
+  if (tableId === authState.value.payload?.tableId) return 'bg-oki-me';
+  const colors = ['bg-oki-table-a', 'bg-oki-table-b', 'bg-oki-table-c', 'bg-oki-table-d'];
   const hash = tableId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 };
@@ -107,11 +111,11 @@ const getTableColor = (tableId: string): string => {
     <main class="px-4">
       <!-- Upload Card -->
       <div
-        class="bg-white border-4 border-black rounded-[32px] p-6 mb-8 shadow-pop-card relative overflow-hidden"
+        class="bg-oki-surface border-theme-lg border-oki-border rounded-[32px] p-6 mb-8 shadow-pop-card relative overflow-hidden"
       >
-        <div class="absolute -top-4 -right-4 text-6xl opacity-20 rotate-12">🌺</div>
+        <div class="absolute -top-4 -right-4 text-6xl opacity-20 rotate-12">{{ decorEmoji }}</div>
 
-        <h2 class="text-xl mb-4 text-center">写真をシェアしてね！</h2>
+        <h2 class="font-heading text-xl mb-4 text-center">写真をシェアしてね！</h2>
 
         <div class="grid grid-cols-2 gap-3">
           <TakePicture @select="handleFileSelect" />
@@ -121,8 +125,8 @@ const getTableColor = (tableId: string): string => {
 
       <!-- Section Title -->
       <div class="mb-4 flex items-center gap-2">
-        <span class="text-xl">New Photos</span>
-        <div class="h-1 bg-black flex-grow rounded-full" />
+        <span class="font-heading text-xl">New Photos</span>
+        <div class="h-1 bg-oki-border flex-grow rounded-full" />
       </div>
 
       <!-- Loading State -->
@@ -134,7 +138,7 @@ const getTableColor = (tableId: string): string => {
       <div v-else-if="error" class="text-center py-8">
         <p class="text-red-500">{{ error }}</p>
         <button
-          class="mt-4 bg-oki-blue border-2 border-black rounded-full px-6 py-2 shadow-pop btn-press"
+          class="mt-4 bg-oki-blue border-theme border-oki-border rounded-full px-6 py-2 shadow-pop btn-press"
           @click="loadPhotos"
         >
           再読み込み
@@ -145,7 +149,7 @@ const getTableColor = (tableId: string): string => {
       <div v-else-if="photos.length === 0" class="text-center py-8">
         <p class="text-lg mb-4">まだ写真がありません</p>
         <button
-          class="inline-block bg-oki-yellow border-2 border-black rounded-full px-6 py-2 shadow-pop btn-press"
+          class="inline-block bg-oki-yellow border-theme border-oki-border rounded-full px-6 py-2 shadow-pop btn-press"
           @click="selectPictureRef?.open()"
         >
           最初の写真を投稿する
@@ -157,11 +161,11 @@ const getTableColor = (tableId: string): string => {
         <div
           v-for="(photo, index) in photos"
           :key="photo.photoId"
-          class="bg-white border-2 border-black rounded-2xl p-2 shadow-pop"
+          class="bg-oki-surface border-theme border-oki-border rounded-2xl p-2 shadow-pop"
           :class="[getRotation(index), index % 3 === 1 ? 'mt-4' : '']"
         >
           <div
-            class="bg-gray-200 aspect-square rounded-xl mb-2 overflow-hidden border border-black relative"
+            class="bg-gray-200 aspect-square rounded-xl mb-2 overflow-hidden border border-oki-border relative"
           >
             <img
               :src="photo.url"
@@ -171,13 +175,13 @@ const getTableColor = (tableId: string): string => {
             />
             <button
               v-if="canDeletePhoto(photo.tableId)"
-              class="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 rounded-full border border-black flex items-center justify-center text-xs"
+              class="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 rounded-full border border-oki-border flex items-center justify-center text-xs"
               @click="handleDelete(photo)"
             >
               🗑️
             </button>
             <span
-              class="absolute top-1 left-1 text-xs px-2 py-0.5 rounded-full border border-black bg-gray-200"
+              class="absolute top-1 left-1 text-xs px-2 py-0.5 rounded-full border border-oki-border bg-oki-me"
               :class="getTableColor(photo.tableId)"
             >
               {{ photo.tableId === authState.payload?.tableId ? 'Me' : '' }}

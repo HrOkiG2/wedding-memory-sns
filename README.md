@@ -28,6 +28,7 @@
 * **Client-Side Compression:** アップロード前の画像圧縮・リサイズ
 * **Realtime Slideshow:** 5分のタイムラグを設けた安全なスライドショー
 * **Self-Moderation:** テーブル単位での削除権限管理
+* **UI Theme Switching:** 環境変数 (`NUXT_PUBLIC_UI_THEME`) でデザインテーマを切り替え（詳細は [Operation Manual](docs/operation.md#4-環境変数-environment-variables)）
 
 ---
 
@@ -58,3 +59,4 @@
 ### 1. Install Dependencies
 ```bash
 npm install
+```
