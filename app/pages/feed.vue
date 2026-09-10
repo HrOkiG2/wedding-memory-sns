@@ -25,6 +25,10 @@ const error = ref('');
 const showSuccess = ref(false);
 const selectPictureRef = ref<InstanceType<typeof SelectPicture> | null>(null);
 
+// ページネーション用（古い写真の追加取得）
+const nextToken = ref<string | undefined>(undefined);
+const isLoadingMore = ref(false);
+
 // Fetch photos on mount
 onMounted(async () => {
   await loadPhotos();
@@ -35,11 +39,27 @@ const loadPhotos = async () => {
     isLoading.value = true;
     const response = await fetchPhotos();
     photos.value = response.photos;
+    nextToken.value = response.nextToken;
   } catch (e) {
     error.value = '写真の読み込みに失敗しました';
     console.error(e);
   } finally {
     isLoading.value = false;
+  }
+};
+
+const loadMore = async () => {
+  if (!nextToken.value || isLoadingMore.value) return;
+
+  try {
+    isLoadingMore.value = true;
+    const response = await fetchPhotos(nextToken.value);
+    photos.value = [...photos.value, ...response.photos];
+    nextToken.value = response.nextToken;
+  } catch (e) {
+    console.error('Failed to load more photos:', e);
+  } finally {
+    isLoadingMore.value = false;
   }
 };
 
@@ -200,6 +220,17 @@ const getTableColor = (tableId: string): string => {
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- Load More -->
+      <div v-if="nextToken" class="text-center mt-6">
+        <button
+          class="bg-oki-surface border-theme border-oki-border rounded-full px-6 py-2 shadow-pop btn-press disabled:opacity-50"
+          :disabled="isLoadingMore"
+          @click="loadMore"
+        >
+          {{ isLoadingMore ? '読み込み中...' : 'もっと見る' }}
+        </button>
       </div>
     </main>
 

@@ -24,6 +24,11 @@ const POLL_INTERVAL = 30000; // 30 seconds to fetch new photos
 let slideTimer: ReturnType<typeof setInterval> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
+// 直近で取得済みの写真のうち最新のcreatedAt。次回ポーリング時にsinceとして渡し、
+// それ以降に追加された写真だけを取得することで、写真が増えても
+// ポーリング1回あたりの転送量を一定に保つ。
+let lastSeenCreatedAt: string | null = null;
+
 // PC用: 2枚の写真
 const photo1 = computed(() => photos.value[currentIndex.value]);
 const photo2 = computed(() => {
@@ -33,11 +38,16 @@ const photo2 = computed(() => {
 
 const loadPhotos = async () => {
   try {
-    const response = await fetchSlideshowPhotos();
+    const response = await fetchSlideshowPhotos(lastSeenCreatedAt ?? undefined);
     const existingIds = new Set(photos.value.map((p) => p.photoId));
     const newPhotos = response.photos.filter((p) => !existingIds.has(p.photoId));
     if (newPhotos.length > 0) {
       photos.value = [...photos.value, ...newPhotos];
+    }
+    for (const photo of response.photos) {
+      if (!lastSeenCreatedAt || photo.createdAt > lastSeenCreatedAt) {
+        lastSeenCreatedAt = photo.createdAt;
+      }
     }
   } catch (e) {
     console.error('Failed to load photos:', e);
@@ -102,8 +112,8 @@ onUnmounted(() => {
 
       <!-- Slideshow -->
       <div v-else class="h-full">
-        <!-- PC: 2枚配置 (対角線) -->
-        <div class="hidden md:block relative h-[calc(100vh-200px)]">
+        <!-- 会場スクリーン用: 画面幅に関わらず常に2枚配置 (対角線) -->
+        <div class="relative h-[calc(100vh-200px)]">
           <transition name="slide-diagonal" mode="out-in">
             <div :key="currentIndex + '-' + isFlipped" class="absolute inset-0">
               <!-- Photo 1 -->
@@ -157,36 +167,13 @@ onUnmounted(() => {
           <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-8xl opacity-20 pointer-events-none">
             {{ decorEmoji }}
           </div>
-        </div>
 
-        <!-- SP: 1枚表示 -->
-        <div class="md:hidden">
-          <transition name="pop" mode="out-in">
-            <div :key="photo1?.photoId" class="max-w-md mx-auto">
-              <div class="bg-oki-surface border-theme-lg border-oki-border rounded-3xl p-4 shadow-pop-card">
-                <div class="bg-black rounded-2xl overflow-hidden border-theme border-oki-border aspect-[4/3]">
-                  <img
-                    :src="photo1?.url"
-                    :alt="'Photo by ' + photo1?.tableId"
-                    class="w-full h-full object-contain"
-                  />
-                </div>
-                <div class="mt-4 flex items-center justify-end">
-                  <div class="flex items-center gap-2 bg-oki-pink px-4 py-2 rounded-full border-theme border-oki-border">
-                    <span class="text-xl">❤️</span>
-                    <span class="font-bold text-lg">{{ photo1?.likes }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Counter -->
-              <div class="text-center mt-4">
-                <span class="bg-oki-surface px-4 py-2 rounded-full border-theme border-oki-border font-bold inline-block shadow-pop">
-                  {{ currentIndex + 1 }} / {{ photos.length }}
-                </span>
-              </div>
-            </div>
-          </transition>
+          <!-- Counter -->
+          <div class="absolute bottom-2 left-1/2 -translate-x-1/2 text-center">
+            <span class="bg-oki-surface px-4 py-2 rounded-full border-theme border-oki-border font-bold inline-block shadow-pop">
+              {{ currentIndex + 1 }} / {{ photos.length }}
+            </span>
+          </div>
         </div>
       </div>
     </main>
@@ -196,40 +183,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Pop transition (SP) */
-.pop-enter-active {
-  animation: pop-in 0.4s ease-out;
-}
-.pop-leave-active {
-  animation: pop-out 0.3s ease-in;
-}
-
-@keyframes pop-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.8) rotate(-3deg);
-  }
-  50% {
-    transform: scale(1.02) rotate(1deg);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
-}
-
-@keyframes pop-out {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.9) rotate(3deg);
-  }
-}
-
-/* Diagonal slide transition (PC) */
+/* Diagonal slide transition */
 .slide-diagonal-enter-active {
   animation: diagonal-in 0.6s ease-out;
 }

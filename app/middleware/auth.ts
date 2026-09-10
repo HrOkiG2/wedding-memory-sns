@@ -6,6 +6,8 @@ export default defineNuxtRouteMiddleware((to) => {
   initAuth();
 
   // Public routes that don't require auth
+  // /slideshowは含めない: 招待客以外に写真が見えてしまうため、会場のPC/iPadでも
+  // 事前にQRコード(招待客 or 管理者用トークン)でログインしてから開く運用とする
   const publicRoutes = ['/', '/login'];
   if (publicRoutes.includes(to.path)) {
     return;
