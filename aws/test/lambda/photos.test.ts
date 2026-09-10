@@ -237,6 +237,18 @@ describe('photos lambda handler', () => {
   });
 
   describe('GET /photos/slideshow', () => {
+    it('should return 401 without an Authorization header (must not be visible to non-guests)', async () => {
+      // Arrange: 招待客以外に写真が見えてしまってはいけないため、他のAPI同様に認証必須
+      const event = buildEvent({ routeKey: 'GET /photos/slideshow' });
+
+      // Act
+      const result = asResult(await handler(event));
+
+      // Assert
+      expect(result.statusCode).toBe(401);
+      expect(JSON.parse(result.body)).toEqual({ error: 'UNAUTHORIZED' });
+    });
+
     it('should query the full history up to the 5-minute cutoff when since is not given', async () => {
       // Arrange
       authorizeAs(GUEST_PAYLOAD);

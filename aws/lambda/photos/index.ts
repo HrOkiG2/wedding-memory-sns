@@ -81,6 +81,61 @@ const HEADERS = {
   "Content-Type": "application/json",
 };
 
+// GET /photos/slideshow - Photos with 5min delay（差分取得対応）
+// 招待客以外に写真が見えてしまうため、他のAPI同様に認証必須（呼び出し元でJWT検証済み）
+// ?since=<前回ポーリングで見た最新のcreatedAt> を付けると、それ以降に
+// 追加された写真だけを返す。スライドショーは30秒間隔でポーリングするため、
+// 毎回全件を返すと写真が増えるほど転送量が増えてしまう問題を解消する。
+async function handleSlideshow(
+  event: APIGatewayProxyEventV2,
+): Promise<APIGatewayProxyResultV2> {
+  const queryParams = event.queryStringParameters || {};
+  const since = queryParams.since;
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+  // sinceが既に5分前カットオフ以降の場合、新着はまだ表示解禁前なので問い合わせ不要
+  if (since && since >= fiveMinutesAgo) {
+    return {
+      statusCode: 200,
+      headers: HEADERS,
+      body: JSON.stringify({ photos: [] }),
+    };
+  }
+
+  const keyConditionExpression = since
+    ? "eventId = :eventId AND createdAt BETWEEN :since AND :time"
+    : "eventId = :eventId AND createdAt <= :time";
+  const values: Record<string, unknown> = {
+    ":eventId": EVENT_ID,
+    ":time": fiveMinutesAgo,
+    ":visible": true,
+  };
+  if (since) {
+    values[":since"] = since;
+  }
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: PHOTOS_TABLE,
+      KeyConditionExpression: keyConditionExpression,
+      FilterExpression: "isVisible = :visible",
+      ExpressionAttributeValues: values,
+      ScanIndexForward: false,
+    }),
+  );
+
+  const photos = (result.Items || []).map((item) => ({
+    ...item,
+    url: toPhotoUrl(item.s3Key),
+  }));
+
+  return {
+    statusCode: 200,
+    headers: HEADERS,
+    body: JSON.stringify({ photos }),
+  };
+}
+
 export const handler = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
@@ -155,56 +210,9 @@ export const handler = async (
       };
     }
 
-    // GET /photos/slideshow - Photos with 5min delay（差分取得対応）
-    // ?since=<前回ポーリングで見た最新のcreatedAt> を付けると、それ以降に
-    // 追加された写真だけを返す。スライドショーは30秒間隔でポーリングするため、
-    // 毎回全件を返すと写真が増えるほど転送量が増えてしまう問題を解消する。
+    // GET /photos/slideshow - 招待客以外に写真が見えてしまうため認証必須
     if (routeKey === "GET /photos/slideshow") {
-      const queryParams = event.queryStringParameters || {};
-      const since = queryParams.since;
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-
-      // sinceが既に5分前カットオフ以降の場合、新着はまだ表示解禁前なので問い合わせ不要
-      if (since && since >= fiveMinutesAgo) {
-        return {
-          statusCode: 200,
-          headers: HEADERS,
-          body: JSON.stringify({ photos: [] }),
-        };
-      }
-
-      const keyConditionExpression = since
-        ? "eventId = :eventId AND createdAt BETWEEN :since AND :time"
-        : "eventId = :eventId AND createdAt <= :time";
-      const values: Record<string, unknown> = {
-        ":eventId": EVENT_ID,
-        ":time": fiveMinutesAgo,
-        ":visible": true,
-      };
-      if (since) {
-        values[":since"] = since;
-      }
-
-      const result = await docClient.send(
-        new QueryCommand({
-          TableName: PHOTOS_TABLE,
-          KeyConditionExpression: keyConditionExpression,
-          FilterExpression: "isVisible = :visible",
-          ExpressionAttributeValues: values,
-          ScanIndexForward: false,
-        }),
-      );
-
-      const photos = (result.Items || []).map((item) => ({
-        ...item,
-        url: toPhotoUrl(item.s3Key),
-      }));
-
-      return {
-        statusCode: 200,
-        headers: HEADERS,
-        body: JSON.stringify({ photos }),
-      };
+      return await handleSlideshow(event);
     }
 
     // POST /photos/upload-url - Get presigned URL for upload
