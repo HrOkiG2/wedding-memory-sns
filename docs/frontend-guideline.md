@@ -13,28 +13,24 @@ Nuxt 3 アプリケーションの実装ガイドラインです。
     * `nuxt.config.ts` で `ssr: false` を設定。
     * S3ホスティングのため、サーバーサイド処理を含めないこと。
 * **Styling:** Tailwind CSS
-* **Icons:** Lucide Vue (推奨) or Heroicons
+* **Icons:** アイコンライブラリは導入せず、絵文字（🎉👑🪑❤️等）で表現する方針を採用しています。
 
 ---
 
 ## 2. Directory Structure
 
-Nuxtの標準構成に加え、ビジネスロジックの分離を意識します。
+現状はNuxtの標準構成に沿ったフラットな構成を採っています（`components/`をui/features等に細分化する運用は今のところ導入していません。プロジェクト規模的にオーバーヘッドが大きいと判断したため）。
 
 ```text
-root/
-├── assets/             # グローバルCSS, 画像
-├── components/
-│   ├── ui/             # 汎用UIパーツ (Button, Input, Card) - ロジックを持たない
-│   ├── features/       # 機能単位のコンポーネント (PhotoList, Uploader)
-│   └── layouts/        # ヘッダー、フッターなどのレイアウト部品
-├── composables/        # ビジネスロジック、状態管理 (useAuth, usePhotos)
-├── layouts/            # ページレイアウト定義 (default.vue, slideshow.vue)
-├── middleware/         # ルーティングガード (auth.global.ts)
-├── pages/              # ページコンポーネント
+app/
+├── assets/             # グローバルCSS
+├── components/         # コンポーネント（サブディレクトリなしのフラット構成）
+├── composables/        # ビジネスロジック、状態管理 (useAuth, useApi, useUpload, useImageConverter)
+├── middleware/         # ルーティングガード (auth.ts)。各ページで definePageMeta({ middleware: 'auth' }) として個別に適用する
+├── pages/              # ページコンポーネント (feed.vue, upload.vue, slideshow.vue 等)
 ├── public/             # 静的ファイル (favicon等)
-├── types/              # TypeScript型定義
-└── utils/              # 純粋な関数 (画像圧縮ロジック等はここ)
+├── server/api/         # ローカル開発用のモックAPI（本番はAWS Lambda側のAPIを使用）
+└── types/              # TypeScript型定義
 ```
 
 ## 3. Implementation Rules
@@ -61,21 +57,21 @@ root/
 
 ## 4. Key Implementation Patterns
 
-### 4-1. API Communication (useFetch Wrapper)
-生の `useFetch` を直接各ページで呼ばず、認証ヘッダー付与やエラーハンドリングを共通化したコンポーザブルを経由してください。
+### 4-1. API Communication (useApi Wrapper)
+生の `$fetch`/`useFetch` を直接各ページで呼ばず、`composables/useApi.ts` を経由してください。認証ヘッダーの付与は `composables/useAuth.ts` の `getAuthHeader()` が担当します（JWTは `wedding_jwt` という名前のCookieに保存）。
 
 ```typescript
-// composables/useApiClient.ts (Example)
-export const useApiClient = <T>(url: string, options: UseFetchOptions<T> = {}) => {
-  const token = useCookie('auth_token')
-  
-  return useFetch(url, {
-    baseURL: useRuntimeConfig().public.apiBase,
-    headers: {
-      Authorization: token.value ? `Bearer ${token.value}` : ''
-    },
-    ...options
-  })
+// composables/useApi.ts (実際の実装、抜粋)
+export function useApi() {
+  const { getAuthHeader } = useAuth();
+  const apiBase = useRuntimeConfig().public.apiEndpoint;
+
+  const fetchPhotos = async (nextToken?: string) => {
+    return await $fetch(`${apiBase}/photos`, {
+      headers: getAuthHeader(),
+    });
+  };
+  // ...
 }
 ```
 
@@ -93,25 +89,26 @@ export const useApiClient = <T>(url: string, options: UseFetchOptions<T> = {}) =
 #### B. Processing Flow
 
 
-1.  **File Selection**: 上記の `input` から `File` オブジェクトを取得。
-2.  **Compression**: `browser-image-compression` 等を使用し、クライアント側でリサイズ。
-    * **Max Size**: 1.5MB 程度
-    * **Max Width**: 1920px
-    * **Orientation**: Exif情報に基づく回転補正を必須とする（カメラ直接撮影時の縦横逆転を防止）。
+1.  **File Selection**: 上記の `input` から `File` オブジェクトを取得（`composables/useUpload.ts`）。事前にファイル形式(JPEG/PNG/HEIC)・サイズ(5MB以下)をバリデーション。
+2.  **Compression**: 外部ライブラリは使わず、`createImageBitmap` + `OffscreenCanvas` を用いてクライアント側でリサイズ・JPEG変換（`composables/useImageConverter.ts`）。
+    * **Max Dimension**: 長辺2048px
+    * **JPEG Quality**: 0.85
+    * ライブラリ非依存にすることで依存関係を減らし、バンドルサイズを抑えている。
 3.  **Presigned URL**: 自社APIからS3アップロード用の「署名付きURL」を取得。
 4.  **Direct Upload**: 取得したURLへ、S3へ直接 `PUT` 送信（アプリケーションサーバーの帯域を消費させない）。
-5.  **DB Registration**: アップロード完了後、APIへメタデータ（ファイルパス等）の保存通知を送る。
+5.  **DB Registration**: アップロード完了後、APIへメタデータ（s3Key等）の保存通知を送る。
 
 ---
 
 ### 4-3. Authentication & Middleware
 認証状態の維持とページ保護を共通化します。
 
-* **Routing Guard**: `middleware/auth.global.ts` を作成。
-    * 実行タイミング：全ルート移動時（グローバルミドルウェア）。
-    * 挙動：有効な認証トークンがないユーザーをログインページ（またはQRスキャン専用ページ）へ強制リダイレクト。
+* **Routing Guard**: `middleware/auth.ts` を作成。
+    * 実行タイミング：認証が必要な各ページで `definePageMeta({ middleware: 'auth' })` として個別に指定する（自動適用の `.global.ts` ではない）。ページ追加時は指定を忘れないこと。
+    * 公開ページ（ログイン画面など）は `publicRoutes` 配列に明示的に含める。
+    * 挙動：有効な認証トークンがないユーザーをログインページへ強制リダイレクト。**スライドショーのような「誰でもアクセスできそうに見えるページ」も、招待客以外に写真が見えてしまうため必ず認証必須にすること**（会場のPC/iPadでも事前にQRコードでログインしてから使う運用とする）。
 * **Persistence (永続化)**:
-    * トークン管理には `useCookie` を使用。
+    * トークン管理には `useCookie`（Cookie名: `wedding_jwt`、有効期限24時間）を使用。
     * ブラウザを閉じたりリロードしたりした後もセッションを維持し、再ログインの手間を省く。
 
 ## 5. UI/UX Guidelines (Wedding Specific)
