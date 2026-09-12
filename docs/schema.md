@@ -42,15 +42,16 @@ QRコードの認証トークンを管理するテーブルです。
 
 **主なアクセスパターン:**
 
-1.  **フィード一覧取得 (リアルタイム)**
-    * **Query:** `PK = "WEDDING_202X"`
+1.  **フィード一覧取得 (リアルタイム、ページネーション対応)**
+    * **Query:** `PK = "WEDDING_202X"`（`?nextToken=`指定時は `SK < :nextToken` を追加）
     * **Filter:** `isVisible = true`
     * **Order:** 降順 (最新が上)
+    * **Limit:** デフォルト20件、最大50件。写真が増えても1回のレスポンスサイズを一定に保つ。
 
-2.  **スライドショー取得 (5分遅れ)**
-    * **Query:** `PK = "WEDDING_202X" AND SK <= :fiveMinutesAgo`
+2.  **スライドショー取得 (5分遅れ、認証必須)**
+    * **Query:** `PK = "WEDDING_202X" AND SK <= :fiveMinutesAgo`（`?since=`指定時は `SK BETWEEN :since AND :fiveMinutesAgo`）
     * **Filter:** `isVisible = true`
-    * **Note:** `:fiveMinutesAgo` はLambda側で計算した日時文字列。
+    * **Note:** `:fiveMinutesAgo` はLambda側で計算した日時文字列。招待客以外に見えないよう、他のAPIと同様にJWT認証が必須。`since`はポーリング時の差分取得用（写真が増えても転送量を一定に保つため）。
 
 3.  **写真削除 (論理削除)**
     * **Update:** `SET isVisible = false`
@@ -71,7 +72,7 @@ QRコードの認証トークンを管理するテーブルです。
 
 | Attribute | Type | Description |
 | :--- | :--- | :--- |
-| `pk` | String | **(PK)** `ip#{clientIp}` 形式 (例: `ip#192.168.1.1`) |
+| `pk` | String | **(PK)** `ip#{clientIp}#token#{token}` 形式 (IP+トークンの組み合わせで制限) |
 | `attempts` | Number | 試行回数 |
 | `firstAttempt` | Number | 最初の試行時刻 (Unix timestamp) |
 | `expiresAt` | Number | **(TTL)** レコード自動削除時刻 (Unix timestamp) |
@@ -79,7 +80,7 @@ QRコードの認証トークンを管理するテーブルです。
 **主なアクセスパターン:**
 
 1.  **レート制限チェック**
-    * **Get:** `GetItem(Key={pk: "ip#{clientIp}"})`
+    * **Get:** `GetItem(Key={pk: "ip#{clientIp}#token#{token}"})`
     * `attempts >= MAX_ATTEMPTS` の場合は `429 Too Many Requests` を返却。
 
 2.  **試行回数インクリメント**
@@ -87,6 +88,9 @@ QRコードの認証トークンを管理するテーブルです。
     * TTL により Window 時間経過後にレコードは自動削除される。
 
 **CDK 定義例:**
+
+（下記は初期構想時の実装例です。実際のWindow/上限値は`aws/lambda/auth/index.ts`を参照してください）
+
 ```typescript
 const rateLimitTable = new dynamodb.Table(this, "RateLimitTable", {
   tableName: "Wedding_RateLimit",
@@ -99,19 +103,43 @@ const rateLimitTable = new dynamodb.Table(this, "RateLimitTable", {
 
 ---
 
+### Table 4: `PendingUploads`
+`s3Key`の不正な再登録（削除済み写真の復活など）を防ぐための予約管理テーブルです。
+
+* **TableName:** `Wedding_PendingUploads`
+* **Partition Key (PK):** `s3Key` (String)
+* **TTL:** `expiresAt` - 未使用の予約のみ自動削除（使用済みになるとTTL属性を外し、恒久的に残す）
+
+| Attribute | Type | Description |
+| :--- | :--- | :--- |
+| `s3Key` | String | **(PK)** `upload-url`発行時に採番されたS3オブジェクトキー |
+| `tableId` | String | 発行先のテーブルID（本人以外による登録を防ぐ照合用） |
+| `used` | Boolean | 登録済みかどうか（登録済みは再登録不可） |
+| `expiresAt` | Number | **(TTL)** 未使用の予約の自動失効時刻（登録後は削除される） |
+
+**主なアクセスパターン:**
+
+1.  **予約作成 (`POST /photos/upload-url`時)**
+    * **Put:** `{ s3Key, tableId, used: false, expiresAt: now + 10分 }`
+2.  **登録検証 (`POST /photos`時)**
+    * **Get:** `GetItem(Key={s3Key})` → `tableId`一致・`used=false`を確認
+    * **Update:** `SET used = true REMOVE expiresAt`（`ConditionExpression: used = :false`で二重登録・再登録を防止）
+
+---
+
 ## 2. S3 Storage Design
 
 ### Bucket Configuration
-* **Access Control:** Private (CloudFront OAI/OAC経由でのみ公開)
-* **CORS:** アプリのドメインからの `PUT`/`GET` を許可
-* **Lifecycle Rule:** 作成から30日後に削除 (コスト削減とデータ整理のため)
+* **Access Control:** Private (CloudFront OAC経由でのみ公開。閲覧は署名なしの安定した相対URL `/photos/...` で配信し、CDN/ブラウザキャッシュを効かせる)
+* **CORS:** アップロード(`PUT`)のみ許可（閲覧はCloudFront経由の同一オリジンになるためCORS不要）
+* **Lifecycle Rule:** 作成から90日後に削除 (コスト削減とデータ整理のため)
 
 ### Object Key Structure
 ダウンロード時の整理を容易にするため、テーブルIDをディレクトリとして使用します。
 
-Format: `photos/{tableId}/{timestamp}_{uuid}.jpg`
+Format: `photos/{tableId}/{timestamp}_{uuid}.jpg`（`timestamp`は`toISOString()`の`:`と`.`を`-`に置換したもの、`uuid`はUUIDv4の先頭8文字）
 
-* **例:** `photos/TABLE_A/20260126-120000_f47ac10b.jpg`
+* **例:** `photos/TABLE_A/2026-01-26T12-00-00-000Z_f47ac10b.jpg`
 
 ### Validation & Optimization (Client-Side)
 S3へのアップロード前に、フロントエンド(Nuxt)側で以下の処理を行います。

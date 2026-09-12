@@ -28,7 +28,9 @@ graph TD
 
     %% Flows
     User -- HTTPS --> CF
-    CF -- OAC --> WebBucket
+    CF -- OAC (/) --> WebBucket
+    CF -- OAC (/photos/*) --> PhotoBucket
+    CF -- /api/* --> APIGW
     
     User -- API Req (JWT) --> APIGW
     APIGW --> AuthFn
@@ -37,8 +39,9 @@ graph TD
     AuthFn -- Read --> DDB
     PhotoFn -- Read/Write --> DDB
     
-    PhotoFn -- Generate Presigned URL --> PhotoBucket
+    PhotoFn -- Generate Presigned URL (Upload only) --> PhotoBucket
     User -- Direct Upload (Presigned URL) --> PhotoBucket
+    User -- View Photos (via CloudFront, no signing) --> CF
     
     Admin -- Admin API --> APIGW
 ```
@@ -98,7 +101,9 @@ Nuxtアプリケーション（SPA/SSGビルド）のホスティング先。
     - スパイクアクセスに対応するため。
 - Tables
     - Wedding_GuestAuth: 認証情報
-    - Wedding_Photos: 写真メタデータ
+    - Wedding_Photos: 写真メタデータ（Point-in-Time Recovery 有効化済み）
+    - Wedding_RateLimit: 認証エンドポイントのレート制限（TTLで自動削除）
+    - Wedding_PendingUploads: アップロードURL発行時の予約管理（s3Keyの不正な再登録を防止。詳細は[schema.md](./schema.md)参照）
 - Backup: Point-in-Time Recovery (PITR) 推奨（式の最中のデータロスト防止）。
 
 ### 2-6. Photo Storage (S3)
@@ -106,10 +111,10 @@ Nuxtアプリケーション（SPA/SSGビルド）のホスティング先。
 
 - CORS:クライアント(ブラウザ)からの直接 PUT を許可するために必須。
     - Allow Origin: App Domain
-    - Allow Methods: GET, PUT
+    - Allow Methods: PUT のみ（閲覧はCloudFront経由の同一オリジンになるためCORS不要）
     - Access Control: Private
 - 画像アップロード: 署名付きURL (Presigned URL) で一時的に許可。
-- 画像閲覧: CloudFront + Signed URL または API経由での署名付きURL発行。
+- 画像閲覧: CloudFront (OAC) 経由で配信。署名なしの安定した相対URL(`/photos/...`)にすることで、CDN/ブラウザキャッシュを効かせ、弱い回線環境での再取得コストを下げている（毎回署名し直すpresigned URL方式だとURLが変わるためキャッシュが効かない）。
 
 ---
 
@@ -121,12 +126,10 @@ Nuxtアプリケーション（SPA/SSGビルド）のホスティング先。
 - dynamodb:PutItem (Login Logs - Optional)
 
 **Photo Lambda Role**
-- dynamodb:Query
-- dynamodb:PutItem
-- dynamodb:UpdateItem (Photos Table)
-- s3:PutObject, s3:GetObject (Photo Bucket - for Presigned URL generation)
+- dynamodb:Query, PutItem, UpdateItem, GetItem (Photos Table, PendingUploads Table)
+- s3:PutObject (Photo Bucket - Presigned URLの署名権限としてのみ使用)
 
-※ s3:PutObject 自体はLambdaが実行するのではなく、署名権限として使用。
+※ 画像の閲覧(GetObject)はCloudFront(OAC)が担うため、LambdaにはS3の読み取り権限を付与していない（最小権限）。
 
 ---
 
