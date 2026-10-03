@@ -36,8 +36,12 @@ const close = () => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  /* 結婚式の雰囲気に合わせたグラデーション（ピンク〜オレンジ） */
-  background: linear-gradient(135deg, rgba(255, 126, 95, 0.95), rgba(254, 180, 123, 0.95));
+  /* テーマのアクセント2色から生成するグラデーション。文字とのコントラスト確保のため少し暗めに寄せる */
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--c-accent) 85%, black 10%),
+    color-mix(in srgb, var(--c-secondary) 85%, black 10%)
+  );
   z-index: 99999; /* 最前面 */
   display: flex;
   align-items: center;
@@ -54,7 +58,7 @@ const close = () => {
 /* アイコン（キラキラ） */
 .icon-circle {
   font-size: 60px;
-  background: white;
+  background: var(--c-surface);
   width: 100px;
   height: 100px;
   line-height: 100px;
@@ -65,7 +69,7 @@ const close = () => {
 }
 
 .title {
-  font-family: 'Futura', sans-serif; /* ポップで太いフォント */
+  font-family: var(--font-heading);
   font-size: 42px;
   font-weight: 900;
   margin-bottom: 16px;

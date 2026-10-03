@@ -123,7 +123,10 @@ npx cdk deploy WeddingStorageStack
 # API のみ（Database, Storage に依存）
 npx cdk deploy WeddingApiStack
 
-# CDN のみ（Storage, API に依存）
+# DNS・証明書のみ（カスタムドメイン使用時。us-east-1にデプロイされる）
+npx cdk deploy WeddingDnsStack
+
+# CDN のみ（Storage, API, DNSに依存）
 npx cdk deploy WeddingCdnStack
 ```
 
@@ -142,25 +145,20 @@ npx cdk deploy WeddingCdnStack
 
 ## フロントエンドのデプロイ
 
+専用スクリプトが用意されているので、これを使います（ビルド→S3アップロード→CloudFrontキャッシュ削除まで一括実行）。
+
 ```bash
-# ビルド
-cd ../app
-npm run generate
+# プロジェクトルートで実行
+npm run front:deploy
 
-# S3にアップロード
-aws s3 sync dist/ s3://$(aws cloudformation describe-stacks \
-  --stack-name WeddingStorageStack \
-  --query 'Stacks[0].Outputs[?ExportName==`WebBucketName`].OutputValue' \
-  --output text) --delete
+# 内容を確認するだけ（実際には反映しない）
+npm run front:deploy:dry
 
-# CloudFrontキャッシュ無効化
-aws cloudfront create-invalidation \
-  --distribution-id $(aws cloudformation describe-stacks \
-    --stack-name WeddingCdnStack \
-    --query 'Stacks[0].Outputs[?ExportName==`DistributionId`].OutputValue' \
-    --output text) \
-  --paths "/*"
+# ビルド済みの場合、アップロードのみ実行
+npm run front:deploy:skip-build
 ```
+
+内部的には `npm run generate`（Nuxtの静的ビルド、出力先は `app/.output/public/`）→ S3同期 → CloudFrontキャッシュ無効化を行っています（`aws/scripts/deploy-frontend.ts`）。詳細は [npm-scripts.md](../docs/npm-scripts.md) を参照してください。
 
 ## 削除
 
@@ -190,21 +188,23 @@ npx cdk destroy WeddingDatabaseStack
 
 ## Lambda 関数
 
+実際に公開されるパスには `/api` プレフィックスが付きます（例: `POST /api/photos`）。認可はAPI Gateway側ではなく各Lambda内でJWTを検証しています。
+
 ### Auth Lambda (`wedding-auth`)
 
 認証処理を担当:
-- `POST /auth/login` - ゲストトークンでログイン、JWT発行
-- Rate Limiting 対応
+- `POST /api/auth/login` - ゲストトークンでログイン、JWT発行
+- Rate Limiting 対応（IP + トークンの組み合わせ、3分間30回まで）
 
 ### Photos Lambda (`wedding-photos`)
 
-写真操作を担当:
-- `GET /photos` - 写真一覧取得
-- `POST /photos` - 写真メタデータ登録
-- `POST /photos/upload-url` - S3署名付きURL発行
-- `GET /photos/slideshow` - スライドショー用データ取得
-- `DELETE /photos/{photoId}` - 写真削除
-- `POST /photos/{photoId}/like` - いいね
+写真操作を担当（`GET /api/photos/slideshow`含め、いずれも認証(JWT)必須）:
+- `GET /api/photos` - 写真一覧取得（ページネーション対応: `limit`/`nextToken`）
+- `POST /api/photos` - 写真メタデータ登録
+- `POST /api/photos/upload-url` - S3署名付きURL発行
+- `GET /api/photos/slideshow` - スライドショー用データ取得（5分遅延、差分取得: `since`）
+- `DELETE /api/photos/{photoId}` - 写真削除（論理削除）
+- `POST /api/photos/{photoId}/like` - いいね
 
 ## DynamoDB テーブル
 
@@ -213,10 +213,8 @@ npx cdk destroy WeddingDatabaseStack
 | 属性 | 型 | キー |
 |-----|-----|-----|
 | authToken | String | PK |
-| guestName | String | - |
-| eventId | String | - |
-| createdAt | String | - |
-| validUntil | String | - |
+| tableId | String | - |
+| tableName | String | - |
 
 ### Wedding_Photos
 
@@ -225,9 +223,10 @@ npx cdk destroy WeddingDatabaseStack
 | eventId | String | PK |
 | createdAt | String | SK |
 | photoId | String | - |
+| tableId | String | - |
 | s3Key | String | - |
-| uploadedBy | String | - |
-| guestName | String | - |
+| mimeType | String | - |
+| isVisible | Boolean | - |
 | likes | Number | - |
 
 ### Wedding_RateLimit
@@ -235,8 +234,19 @@ npx cdk destroy WeddingDatabaseStack
 | 属性 | 型 | キー |
 |-----|-----|-----|
 | pk | String | PK |
-| count | Number | - |
+| attempts | Number | - |
 | expiresAt | Number | TTL |
+
+### Wedding_PendingUploads
+
+`upload-url`発行時に、そのs3Keyを誰に発行したかを記録するテーブルです。`POST /photos`での登録時に、s3Keyが本当に本人に発行されたものか・既に登録済み（削除済み写真の再登録試行）でないかを検証するために使用します。
+
+| 属性 | 型 | キー |
+|-----|-----|-----|
+| s3Key | String | PK |
+| tableId | String | - |
+| used | Boolean | - |
+| expiresAt | Number | TTL（未使用の予約のみ。使用済みになると恒久的に残る） |
 
 ## コスト概算（月額）
 

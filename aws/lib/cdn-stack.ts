@@ -34,6 +34,9 @@ function handler(event) {
 
 interface CdnStackProps extends cdk.StackProps {
   httpApi: apigatewayv2.IHttpApi;
+  // 写真バケット（/photos/* をCloudFront経由で配信し、署名なしの安定したURLで
+  // ブラウザ/エッジキャッシュを効かせるため）
+  photoBucket: s3.IBucket;
   // カスタムドメイン（オプション）
   domainName?: string;
   certificate?: acm.ICertificate;
@@ -48,7 +51,7 @@ export class CdnStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: CdnStackProps) {
     super(scope, id, props);
 
-    const { httpApi, domainName, certificate, hostedZone } = props;
+    const { httpApi, photoBucket, domainName, certificate, hostedZone } = props;
 
     // Web Hosting Bucket
     this.webBucket = new s3.Bucket(this, "WebBucket", {
@@ -61,6 +64,20 @@ export class CdnStack extends cdk.Stack {
     // S3 Origin with OAC（同一Stack内なのでバケットポリシーも自動設定される）
     const s3Origin =
       cloudfrontOrigins.S3BucketOrigin.withOriginAccessControl(this.webBucket);
+
+    // 写真バケット用Origin（OAC経由。バケット自体はBlockPublicAccessのまま）
+    // withOriginAccessControl()は本来、バケット側に「このディストリビューションからの
+    // 読み取りを許可する」ポリシーを自動付与するが、それには distribution の ARN が必要になり、
+    // バケットが別スタック(StorageStack)にあるとスタック間で循環依存になってしまう。
+    // ここでは「インポートされたバケット」として扱うことでその自動付与をスキップし
+    // （実際のバケットポリシーはStorageStack側で手動付与済み）、循環を避ける。
+    const importedPhotoBucket = s3.Bucket.fromBucketName(
+      this,
+      "ImportedPhotoBucket",
+      photoBucket.bucketName,
+    );
+    const photoOrigin =
+      cloudfrontOrigins.S3BucketOrigin.withOriginAccessControl(importedPhotoBucket);
 
     // CloudFront Function for URI rewriting (SPA routing)
     const uriRewriteFunction = new cloudfront.Function(
@@ -96,6 +113,15 @@ export class CdnStack extends cdk.Stack {
           originRequestPolicy:
             cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         },
+        // 写真配信用（読み取り専用）。s3Keyが常に "photos/..." で始まるため
+        // パスプレフィックスの書き換えなしでそのままS3キーに対応する。
+        // アップロード時にCache-Control: immutableを付与しているため長期キャッシュされる。
+        "/photos/*": {
+          origin: photoOrigin,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        },
       },
       defaultRootObject: "index.html",
       errorResponses: [
@@ -105,7 +131,8 @@ export class CdnStack extends cdk.Stack {
           responsePagePath: "/index.html",
         },
       ],
-      priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+      // 会場（日本）のゲストが東京エッジ経由でアクセスできるようアジアを含める
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
       ...(domainName && certificate
         ? { domainNames: [domainName], certificate }
         : {}),

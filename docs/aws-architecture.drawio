@@ -1,10 +1,10 @@
 <mxfile host="65bd71144e">
     <diagram name="AWS Architecture" id="aws-wedding-photo-sns">
-        <mxGraphModel dx="1049" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#E6E6E6" math="0" shadow="1">
+        <mxGraphModel dx="526" dy="836" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#E6E6E6" math="0" shadow="1">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="2" value="AWS Cloud" style="sketch=0;outlineConnect=0;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#666666;fillColor=#f5f5f5;verticalAlign=top;align=left;spacingLeft=30;fontColor=#333333;dashed=0;" vertex="1" parent="1">
+                <mxCell id="2" value="AWS Cloud" style="sketch=0;outlineConnect=0;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#666666;fillColor=#f5f5f5;verticalAlign=top;align=left;spacingLeft=30;fontColor=#333333;dashed=0;" parent="1" vertex="1">
                     <mxGeometry x="210" y="90" width="840" height="650" as="geometry"/>
                 </mxCell>
                 <mxCell id="title" value="Wedding Photo SNS - AWS Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" parent="1" vertex="1">
@@ -153,7 +153,7 @@
                 <mxCell id="region_useast1" value="us-east-1&amp;nbsp;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#FF8C00;strokeWidth=2;dashed=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;fontSize=12;fontStyle=1" parent="1" vertex="1">
                     <mxGeometry x="450" y="120" width="140" height="140" as="geometry"/>
                 </mxCell>
-                <mxCell id="3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3334B9;strokeWidth=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="secrets_label" target="dynamo_auth">
+                <mxCell id="3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3334B9;strokeWidth=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" parent="1" source="secrets_label" target="dynamo_auth" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="520" y="520"/>

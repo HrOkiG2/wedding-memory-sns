@@ -1,0 +1,88 @@
+/**
+ * UIテーマ用のデザイントークン。
+ *
+ * NUXT_PUBLIC_UI_THEME で選択したテーマ名が <html data-theme="..."> に
+ * 反映される（composables/useTheme.ts / app.vue 参照）。
+ * tailwind.config.ts の色・シャドウ・フォントはすべてここの CSS 変数を
+ * 参照しているため、テーマを増やす場合はここにブロックを追加するだけでよい。
+ *
+ * 参考デザイン案:
+ * - pop:       Wedding SNS UI - Pop (https://claude.ai/code/artifact/3976f62c-3559-488e-8354-555315e1ab2f)
+ * - botanical: Wedding SNS UI - Botanical (https://claude.ai/code/artifact/9d7d78f0-952d-446d-8998-fb0f6fd22e77)
+ */
+
+:root,
+[data-theme='pop'] {
+  /* base */
+  --c-bg: #fff9e5; /* oki-sand: 明るい砂浜 */
+  --c-surface: #ffffff;
+  --c-ink: #1a1a1a; /* 墨文字 */
+  --c-border: #000000;
+  --c-border-w: 2px;
+  --c-border-w-lg: 4px;
+
+  /* accents */
+  --c-primary: #00e5ff; /* 海のような蛍光シアン */
+  --c-secondary: #ffd600; /* 太陽のイエロー */
+  --c-accent: #ff4081; /* ハイビスカスピンク */
+  --c-emphasis: #ef4444; /* 新郎新婦名などの強調 */
+
+  /* table badges */
+  --c-table-a: #00e5ff;
+  --c-table-b: #ffd600;
+  --c-table-c: #ff4081;
+  --c-table-d: #86efac;
+  --c-me: #e5e7eb;
+
+  /* type */
+  --font-heading: 'M PLUS Rounded 1c', system-ui, -apple-system, sans-serif;
+  --font-body: 'M PLUS Rounded 1c', system-ui, -apple-system, sans-serif;
+
+  /* shape */
+  --radius-card: 1rem;
+  --radius-card-lg: 1.5rem;
+  --shadow-pop: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-pop-hover: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-pop-card: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+
+  /* 新郎新婦名の縁取り（コミック風の黒縁） */
+  --text-stroke: 1.5px black;
+}
+
+[data-theme='botanical'] {
+  /* base */
+  --c-bg: #f4eede; /* クラフト紙 */
+  --c-surface: #fffdf8;
+  --c-ink: #3b3327;
+  --c-border: #c9bd9c;
+  --c-border-w: 1px;
+  --c-border-w-lg: 1px;
+
+  /* accents */
+  --c-primary: #7e8d6c; /* セージグリーン */
+  --c-secondary: #d7a39c; /* くすみピンク */
+  --c-accent: #c7a15b; /* ゴールド */
+  --c-emphasis: #a6604a; /* テラコッタ寄りの強調色 */
+
+  /* table badges */
+  --c-table-a: #7e8d6c;
+  --c-table-b: #d7a39c;
+  --c-table-c: #c7a15b;
+  --c-table-d: #c77e62;
+  --c-me: #c7a15b;
+
+  /* type */
+  --font-heading: 'Caveat', cursive;
+  --font-body: 'Zen Maru Gothic', system-ui, -apple-system, sans-serif;
+
+  /* shape */
+  --radius-card: 1.5rem;
+  --radius-card-lg: 2rem;
+  --shadow-pop: 0 3px 10px rgba(90, 74, 46, 0.14);
+  --shadow-pop-hover: 0 1px 4px rgba(90, 74, 46, 0.14);
+  --shadow-pop-card: 0 10px 28px rgba(90, 74, 46, 0.16);
+}
+
+body {
+  font-family: var(--font-body);
+}

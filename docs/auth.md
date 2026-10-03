@@ -38,6 +38,7 @@
 | Action | API Path | Required Logic |
 | :--- | :--- | :--- |
 | **写真一覧取得** | `GET /photos` | JWTが有効であれば誰でもOK。 |
+| **スライドショー取得** | `GET /photos/slideshow` | JWTが有効であれば誰でもOK（招待客以外に見せないため認証必須。会場のPC/iPadも事前にQRコードでログインしておく）。 |
 | **写真アップロード** | `POST /photos/upload-url` | JWTが有効であればOK。<br>JWT内の `tableId` をメタデータとして保存。 |
 | **写真削除** | `DELETE /photos/{id}` | **権限チェック必須**<br>TargetPhoto.tableId === JWT.tableId OR JWT.role === 'ADMIN' |
 
@@ -188,3 +189,4 @@ async function checkRateLimit(clientIp: string): Promise<boolean> {
     "retryAfter": 900
   }
 }
+```

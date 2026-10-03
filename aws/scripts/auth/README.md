@@ -82,7 +82,7 @@ npx tsx scripts/auth/seed-guests.ts --file guests-production.json
 
 ## 認証URL生成 (`generate-auth-url.ts`)
 
-ローカル開発用の認証URLを生成します。
+⚠️ **ローカル開発専用**です。`guests.json`は読み込まず、固定の疑似トークン(`dev-table-1`等)と`http://localhost:3002`向けのURLを表示するだけなので、本番用URLの生成には使えません。
 
 ```bash
 # すべてのテストURLを表示
@@ -94,6 +94,8 @@ npx tsx scripts/auth/generate-auth-url.ts --table 1
 # 管理者用URLのみ
 npx tsx scripts/auth/generate-auth-url.ts --admin
 ```
+
+本番用のURLは、下記「QRコード生成ワークフロー」の通り`guests.json`のトークンから手動で組み立ててください。
 
 ---
 

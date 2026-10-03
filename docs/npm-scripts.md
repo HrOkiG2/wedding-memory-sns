@@ -84,11 +84,13 @@ npm run db:seed            # DynamoDB に登録
 
 ---
 
-## 認証URL生成
+## 認証URL生成（ローカル開発用）
+
+> ⚠️ **注意:** このスクリプトは `guests.json` を読み込みません。ローカル開発用に固定された疑似トークン(`dev-table-1`等)と`http://localhost:3002`向けのURLを表示するだけです。**本番用のログインURLはこれでは生成できません**。本番URLは `https://<本番ドメイン>/?token=<guests.jsonのauthToken>` の形で、各テーブルのトークンを見ながら組み立ててください。
 
 | スクリプト | 説明 |
 | :--- | :--- |
-| `npm run auth-url` | `guests.json` をもとに各テーブルの認証URL・QRコードを生成 |
+| `npm run auth-url` | ローカル開発用の疑似ログインURLを表示（`aws/scripts/auth/generate-auth-url.ts`） |
 
 ```bash
 npm run auth-url
@@ -104,11 +106,12 @@ npm run auth-url
 
 ```bash
 npm run cdk:deploy          # AWSリソースを作成
-npm run db:seed:generate    # 認証トークンを生成
+npm run db:seed:generate    # 認証トークンを生成（aws/scripts/auth/guests.json）
 npm run db:seed             # DynamoDBに登録
-npm run auth-url            # QRコード用URLを生成
 npm run front:deploy        # フロントエンドをデプロイ
 ```
+
+QRコード用の本番URLは、`guests.json`の各`authToken`を元に `https://<本番ドメイン>/?token=<authToken>` の形で組み立てて発行してください（`npm run auth-url`はローカル開発用のため使用しません）。
 
 ### フロントエンドのみ更新
 

@@ -35,7 +35,7 @@ defineExpose({ open });
     />
     <button
       type="button"
-      class="btn-press bg-oki-pink text-white border-2 border-black rounded-2xl p-4 flex flex-col items-center justify-center shadow-pop w-full"
+      class="btn-press bg-oki-pink text-white border-theme border-oki-border rounded-2xl p-4 flex flex-col items-center justify-center shadow-pop w-full"
       @click="open"
     >
       <span class="text-3xl mb-1">📂</span>
